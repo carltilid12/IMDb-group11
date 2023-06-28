@@ -89,9 +89,9 @@ titleValue = ttk.Label(infoCanvas, text=movieTitle, font=("Arial", 12))
 infoCanvas.create_window(150, 25, anchor="w", window=titleValue)
 # Movie Language
 languageLabel = ttk.Label(infoCanvas, text="Language: ", font=("Arial", 12))
-infoCanvas.create_window(25, 25, anchor="w", window=languageLabel)
+infoCanvas.create_window(25, 50, anchor="w", window=languageLabel)
 languageValue = ttk.Label(infoCanvas, text=movieLanguage, font=("Arial", 12))
-infoCanvas.create_window(150, 25, anchor="w", window=languageValue)
+infoCanvas.create_window(150, 50, anchor="w", window=languageValue)
 # Movie Length
 lengthLabel = ttk.Label(infoCanvas, text="Length: ", font=("Arial", 12))
 infoCanvas.create_window(25, 25, anchor="w", window=lengthLabel)
