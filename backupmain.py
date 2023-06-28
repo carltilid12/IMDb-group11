@@ -77,6 +77,9 @@ movieTitle = "House of the Dragon"
 movieYear = "2022"
 movieSynopsis = "An internal succession war within House Targaryen at \
                  the height of its power, 172 years before the birth of Daenerys Targaryen."
+movieGenre = "Action | Adventure | Drama" #for i in range
+movieLanguage = "English"
+movieLength = "1h 47m"
 
 titleLabel = ttk.Label(infoCanvas, text="Movie Title:", font=("Arial", 12))
 infoCanvas.create_window(25, 25, anchor="w", window=titleLabel)
