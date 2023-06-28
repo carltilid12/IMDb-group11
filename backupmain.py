@@ -83,6 +83,16 @@ infoCanvas.create_window(25, 25, anchor="w", window=titleLabel)
 titleValue = ttk.Label(infoCanvas, text=movieTitle, font=("Arial", 12))
 infoCanvas.create_window(150, 25, anchor="w", window=titleValue)
 
+yearLabel = ttk.Label(infoCanvas, text="Year:", font=("Arial", 12))
+infoCanvas.create_window(25, 50, anchor="w", window=titleLabel)
+yearValue = ttk.Label(infoCanvas, text=movieYear, font=("Arial", 12))
+infoCanvas.create_window(150, 50, anchor="w", window=titleValue)
+
+synopsisLabel = ttk.Label(infoCanvas, text="Synopsis:", font=("Arial", 12))
+infoCanvas.create_window(25, 50, anchor="w", window=titleLabel)
+synopsisValue = ttk.Label(infoCanvas, text=moveSynopsis, font=("Arial", 12))
+infoCanvas.create_window(150, 50, anchor="w", window=titleValue)
+
 ##### RUN #######
 
 # Main Window
