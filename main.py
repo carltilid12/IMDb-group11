@@ -102,21 +102,49 @@ def getMovies():
     return movies
 
 # Function to create actor information
+actor_widgets_dict = {}
 def create_actor_info(actor_data, row):
     actor_name, character_name, description = actor_data
-    
-    # Clear the previous actor information if it exists
-    for widget in infoCanvas.grid_slaves():
-        if int(widget.grid_info()["row"]) == 3 + row:
-            widget.grid_forget()
-
-    actor_value = ttk.Label(infoCanvas, text=f"{actor_name} as {character_name}", font=("Arial", 12))
-    infoCanvas.create_window(150, 325 + row * 150, anchor="w", window=actor_value)
-
-    actor_value_info = tk.Text(infoCanvas, wrap="word", width=75, height=6)
+    # Check if there is existing information for the given row
+    if row in actor_widgets_dict:
+        # Delete the existing actor information for the row
+        delete_actor_info(row)
+    actor_frame = tk.Frame(infoCanvas, bg='gray')
+    actor_value = ttk.Label(actor_frame, text=f"{actor_name} as {character_name}", font=("Arial", 12))
+    actor_value_info = tk.Text(actor_frame, wrap="word", width=75, height=6)
     actor_value_info.insert("1.0", description)
     actor_value_info.configure(state="disabled")
-    infoCanvas.create_window(150, 400 + row * 150, anchor="w", window=actor_value_info)
+
+    # Store references to the actor-related widgets in the dictionary
+    actor_widgets_dict[row] = {
+        "frame": actor_frame,
+        "label": actor_value,
+        "text_widget": actor_value_info
+    }
+
+    # Calculate the y-coordinate for the new actor info based on the row
+    y_coord = 375 + row * 150
+
+    # Create the actor frame and its widgets on the canvas
+    actor_frame_id = infoCanvas.create_window(150, y_coord, anchor="w", window=actor_frame)
+
+    # Position the label and text widget inside the frame
+    actor_frame.grid_rowconfigure(0, weight=1)
+    actor_frame.grid_columnconfigure(0, weight=1)
+    actor_value.grid(row=0, column=0, padx=5, pady=5, sticky="w")
+    actor_value_info.grid(row=1, column=0, padx=5, pady=5, sticky="w")
+# Function to delete actor information
+def delete_actor_info(row):
+    if row in actor_widgets_dict:
+        # Get the dictionary containing the widget references for the given row
+        widgets = actor_widgets_dict[row]
+        # Destroy the widgets and the frame associated with the row
+        widgets["label"].destroy()
+        widgets["text_widget"].destroy()
+        widgets["frame"].destroy()
+        # Remove the entry from the dictionary
+        del actor_widgets_dict[row]
+
 
 def updateSuggestions(*args):
     # Get the text entered in the search bar
