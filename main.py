@@ -7,6 +7,7 @@ import sqlite3
 import os
 
 ################################ FUNCTIONS ##################################
+# Function to Display the ssearched movie with all the information
 def displayMovie(event=None):
     # Get the movie title entered in the search bar
     search_text = search_var.get()
@@ -49,7 +50,15 @@ def displayMovie(event=None):
         genre_list = [genre[0] for genre in genres]
         # Join the genres into a string with '|' separator
         movieGenre = " | ".join(genre_list)
-        
+
+        # Fetch the list of actors and their roles in the movie using the movieId
+        conn = sqlite3.connect("imdb.db")
+        cursor = conn.cursor()
+        cursor.execute("SELECT actors.actorName, casts.characterPlayed, actors.about FROM actors INNER JOIN casts ON actors.actorId = casts.actorId WHERE casts.movieID=?", (movieId,))
+        actors_data = cursor.fetchall()
+        conn.close()
+
+        # Update
         titleValue.config(text=movieTitle)
         languageValue.config(text=movieLanguage)
         lengthValue.config(text=movieLength)
@@ -60,7 +69,11 @@ def displayMovie(event=None):
         synopsisValue.insert("1.0", movieSynopsis)  # Insert the fetched movie synopsis
         synopsisValue.config(state="disabled")  # Disable the Text widget after inserting
         genreValue.config(text=movieGenre)  # Update the genre label with the movie genres
-        
+
+        # Update the actor labels and text fields for each actor in the movie
+        for idx, actor_data in enumerate(actors_data):
+            create_actor_info(actor_data, idx)
+            
         global current_cover_image
         
         try:
@@ -77,7 +90,7 @@ def displayMovie(event=None):
         # Display a pop-up warning if the movie title does not exist
         messagebox.showwarning("Movie Not Found", f"The movie '{search_text}' does not exist in the database.")
 
-
+# Function to return the list of movie titles
 def getMovies():
     conn = sqlite3.connect("imdb.db")
     cursor = conn.cursor()
@@ -87,6 +100,23 @@ def getMovies():
 
     conn.close()
     return movies
+
+# Function to create actor information
+def create_actor_info(actor_data, row):
+    actor_name, character_name, description = actor_data
+    
+    # Clear the previous actor information if it exists
+    for widget in infoCanvas.grid_slaves():
+        if int(widget.grid_info()["row"]) == 3 + row:
+            widget.grid_forget()
+
+    actor_value = ttk.Label(infoCanvas, text=f"{actor_name} as {character_name}", font=("Arial", 12))
+    infoCanvas.create_window(150, 325 + row * 150, anchor="w", window=actor_value)
+
+    actor_value_info = tk.Text(infoCanvas, wrap="word", width=75, height=6)
+    actor_value_info.insert("1.0", description)
+    actor_value_info.configure(state="disabled")
+    infoCanvas.create_window(150, 400 + row * 150, anchor="w", window=actor_value_info)
 
 def updateSuggestions(*args):
     # Get the text entered in the search bar
@@ -106,6 +136,18 @@ def updateSuggestions(*args):
         suggestions_listbox.lift()
     else:
         suggestions_listbox.place_forget()
+
+# Function to update the scrollable region of the canvas
+def update_canvas_scrollregion(event=None):
+    infoCanvas.configure(scrollregion=infoCanvas.bbox('all'))
+
+def on_suggestion_select(event):
+    selected_movie = suggestions_listbox.get(suggestions_listbox.curselection())
+    search_var.set(selected_movie)
+    # Call the displayMovie function to show the selected movie details
+    displayMovie()
+
+
 ################################## MAIN #####################################
 
 # MAIN WINDOW
@@ -153,12 +195,6 @@ search_entry.bind("<Return>", displayMovie)
 search_entry.bind("<FocusOut>", lambda event: suggestions_listbox.place_forget())
 
 suggestions_listbox = tk.Listbox(window, width=50, height=5)
-def on_suggestion_select(event):
-    selected_movie = suggestions_listbox.get(suggestions_listbox.curselection())
-    search_var.set(selected_movie)
-    # Call the displayMovie function to show the selected movie details
-    displayMovie()
-
 suggestions_listbox.bind("<<ListboxSelect>>", lambda event: on_suggestion_select(event) if suggestions_listbox.curselection() else None)
 
 
@@ -174,7 +210,7 @@ mylist_button.grid(row=0, column=4, padx=10, pady=10)
 
 #Movie Cover
 coverCanvas = tk.Canvas(window, width=300, height=400, bg='#333030', highlightbackground='#333030')
-coverCanvas.grid(row=1, column=0, padx=10, pady=10, columnspan=2)
+coverCanvas.grid(row=1, column=0, padx=10, pady=(10, 200), columnspan=2)
 
 movieCoverPath = "assets\\houseOfDragon.png"
 movieCoverVar = (movieCoverPath)
@@ -182,10 +218,7 @@ coverImage = tk.PhotoImage(file=movieCoverVar)
 movieCover = coverCanvas.create_image(150, 200, image=coverImage)
 currentCoverImage = coverImage
 
-#Movie Information
-infoCanvas = tk.Canvas(window, width=600, height=400, bg='#433E3E', highlightbackground='#433E3E')
-infoCanvas.grid(row=1, column=2, padx=10, pady=10, columnspan=1)
-
+# Default Movie Details
 movieTitle = "House of the Dragon"
 movieLanguage = "English (United States)"
 movieLength = "1h 47m"
@@ -193,6 +226,29 @@ movieYear = "2022"
 movieRatings = '8.5'
 movieGenre = "Action | Adventure | Drama" #split(tuplegenre)
 movieSynopsis = "An internal succession war within House Targaryen at the height of its power, 172 years before the birth of Daenerys Targaryen."
+
+movieActor = (("Matt Smith", "Prince Daemon Targaryen", "Matt Smith is an English actor who shot to fame in the UK aged 26 when he was cast by producer Steven Moffat as the Eleventh Doctor in the BBC's iconic science-fiction adventure series Doctor Who (2005)."),\
+              ("Emma D'arcy", "Queen Rhaenyra Targaryen", "British actor born in London. Emma D'Arcy is an actor and theatre-maker. Emma studied at the Ruskin School of Art. They are also the Joint Artistic Director of the Forward Arena Theatre Company. Their performance on stage in Christopher Shinn's 'Against' alongside actor Ben Whishaw was described as \"exceedingly likeable and sensitive\""),\
+                ("Olivia Cooke", "Queen Alicent Hightower", "Olivia Cooke was born and raised in Oldham, a former textile manufacturing town in Greater Manchester, North West England. She comes from a family of non-actors; her father, John, is a retired police officer, and her mother is a sales representative. Cooke attended Royton and Crompton Secondary School and studied drama at Oldham Sixth Form College, leaving before the end of her A-levels to star in Blackout."))
+currentMovieActor = movieActor
+#Movie Information
+# Canvas
+infoCanvas = tk.Canvas(window, width=800, height=600, bg='#433E3E', highlightbackground='#433E3E')
+infoCanvas.grid(row=1, column=2, padx=10, pady=10, columnspan=1)
+
+# Create a frame to hold the contents of the canvas
+infoFrame = tk.Frame(infoCanvas, bg='#433E3E')
+infoCanvas.create_window(0, 0, anchor='nw', window=infoFrame)
+
+# Configure the scrollbar
+scrollbar = tk.Scrollbar(window, orient='vertical', command=infoCanvas.yview)
+scrollbar.place(relx=1.0, rely=0, relheight=1.0, anchor='ne')
+infoCanvas.configure(yscrollcommand=scrollbar.set)
+infoCanvas.bind("<Enter>", lambda event: infoCanvas.bind_all('<MouseWheel>', lambda e: \
+    infoCanvas.yview_scroll(-1 * (e.delta // 120), 'units')))
+infoCanvas.bind("<Leave>", lambda event: infoCanvas.unbind_all('<MouseWheel>'))
+# Bind the function to the canvas size change event
+infoCanvas.bind('<Configure>', update_canvas_scrollregion)
 
 # Movie Title
 titleLabel = ttk.Label(infoCanvas, text="Movie Title: ", font=("Arial", 12))
@@ -224,15 +280,24 @@ genreLabel = ttk.Label(infoCanvas, text="Genre:", font=("Arial", 12))
 infoCanvas.create_window(25, 150, anchor="w", window=genreLabel)
 genreValue = ttk.Label(infoCanvas, text=movieGenre, font=("Arial", 12))
 infoCanvas.create_window(150, 150, anchor="w", window=genreValue)
+
 # Movie Synopsis
 synopsisLabel = ttk.Label(infoCanvas, text="Synopsis:", font=("Arial", 12))
 infoCanvas.create_window(25, 175, anchor="w", window=synopsisLabel)
 synopsisValue = tk.Text(infoCanvas, wrap="word", width=50, height=8)
 synopsisValue.insert("1.0", movieSynopsis)
 synopsisValue.configure(state="disabled")
-infoCanvas.create_window(150, 225, anchor="w", window=synopsisValue)
+infoCanvas.create_window(150, 230, anchor="w", window=synopsisValue)
+
+# Movie Cast
+castLabel = ttk.Label(infoCanvas, text="Cast:", font=("Arial", 12))
+infoCanvas.create_window(25, 325, anchor="w", window=castLabel)
+for idx, actor_info in enumerate(movieActor):
+    create_actor_info(actor_info, idx)
+
+# Update the scrollable region initially
+update_canvas_scrollregion()
 
 ##### RUN #######
-
 # Main Window
 window.mainloop()
