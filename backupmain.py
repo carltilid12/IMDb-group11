@@ -94,29 +94,29 @@ languageValue = ttk.Label(infoCanvas, text=movieLanguage, font=("Arial", 12))
 infoCanvas.create_window(150, 50, anchor="w", window=languageValue)
 # Movie Length
 lengthLabel = ttk.Label(infoCanvas, text="Length: ", font=("Arial", 12))
-infoCanvas.create_window(25, 25, anchor="w", window=lengthLabel)
+infoCanvas.create_window(25, 75, anchor="w", window=lengthLabel)
 lengthValue = ttk.Label(infoCanvas, text=movieLength, font=("Arial", 12))
-infoCanvas.create_window(150, 25, anchor="w", window=lengthValue)
+infoCanvas.create_window(150, 75, anchor="w", window=lengthValue)
 # Movie Year
 yearLabel = ttk.Label(infoCanvas, text="Year:", font=("Arial", 12))
-infoCanvas.create_window(25, 50, anchor="w", window=titleLabel)
+infoCanvas.create_window(25, 100, anchor="w", window=yearLabel)
 yearValue = ttk.Label(infoCanvas, text=movieYear, font=("Arial", 12))
-infoCanvas.create_window(150, 50, anchor="w", window=titleValue)
+infoCanvas.create_window(150, 100, anchor="w", window=yearValue)
 # Movie Synopsis
 synopsisLabel = ttk.Label(infoCanvas, text="Synopsis:", font=("Arial", 12))
-infoCanvas.create_window(25, 50, anchor="w", window=titleLabel)
+infoCanvas.create_window(25, 125, anchor="w", window=synopsisLabel)
 synopsisValue = ttk.Label(infoCanvas, text=movieSynopsis, font=("Arial", 12))
-infoCanvas.create_window(150, 50, anchor="w", window=titleValue)
+infoCanvas.create_window(150, 125, anchor="w", window=synopsisValue)
 # Movie Ratings
 ratingsLabel = ttk.Label(infoCanvas, text="Ratings:", font=("Arial", 12))
-infoCanvas.create_window(25, 50, anchor="w", window=ratingsLabel)
+infoCanvas.create_window(25, 150, anchor="w", window=ratingsLabel)
 ratingsValue = ttk.Label(infoCanvas, text=movieRatings, font=("Arial", 12))
-infoCanvas.create_window(150, 50, anchor="w", window=ratingsValue)
+infoCanvas.create_window(150, 150, anchor="w", window=ratingsValue)
 # Movie Genre
 genreLabel = ttk.Label(infoCanvas, text="Genre:", font=("Arial", 12))
-infoCanvas.create_window(25, 50, anchor="w", window=genreLabel)
+infoCanvas.create_window(25, 175, anchor="w", window=genreLabel)
 genreValue = ttk.Label(infoCanvas, text=movieGenre, font=("Arial", 12))
-infoCanvas.create_window(150, 50, anchor="w", window=genreValue)
+infoCanvas.create_window(150, 175, anchor="w", window=genreValue)
 
 ##### RUN #######
 

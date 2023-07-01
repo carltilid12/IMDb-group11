@@ -1,33 +1,38 @@
 import tkinter as tk
 from tkinter import ttk
 
+# Function to get the movie titles (you can modify this to retrieve data from your database)
+def getMovies():
+    return ["Movie 1", "Movie 2", "Movie 3", "Movie 4", "Movie 5"]
+
+# Function to update the search suggestion dropdown based on the current text in the search bar
+def update_suggestions():
+    search_text = search_var.get()
+    if search_text:
+        suggestions = [movie for movie in movies if search_text.lower() in movie.lower()]
+        suggestion_var.set(suggestions)
+        suggestion_listbox.place(x=110, y=65 + search_entry.winfo_height())  # Place below the search bar
+    else:
+        suggestion_listbox.place_forget()  # Hide the dropdown if no active text
+
 # Create the main window
 window = tk.Tk()
 window.title("Movie Information")
 
-# Create a Canvas widget
-canvas = tk.Canvas(window, width=400, height=400, bg="white")
-canvas.pack()
+# Create a search bar
+search_var = tk.StringVar()
+search_entry = ttk.Entry(window, textvariable=search_var, width=40)
+search_entry.place(x=0, y=0)
 
-# Define movie information
-movie_title = "Inception"
-movie_synopsis = "A skilled thief is capable of stealing valuable secrets from deep within the subconscious during the dream state."
+# Get movie titles
+movies = getMovies()
 
-# Create a Label widget for movie title
-title_label = ttk.Label(canvas, text="Movie Title:", font=("Arial", 12))
-canvas.create_window(50, 50, anchor="w", window=title_label)
+# Create a listbox for search suggestions
+suggestion_var = tk.StringVar()
+suggestion_listbox = tk.Listbox(window, listvariable=suggestion_var, width=40, height=5)
 
-title_entry = ttk.Entry(canvas, width=30, state="readonly")
-title_entry.insert(0, movie_title)
-canvas.create_window(200, 50, anchor="w", window=title_entry)
-
-# Create a Label widget for movie synopsis
-synopsis_label = ttk.Label(canvas, text="Movie Synopsis:", font=("Arial", 12))
-canvas.create_window(50, 100, anchor="w", window=synopsis_label)
-
-synopsis_text = tk.Text(canvas, width=40, height=6)
-synopsis_text.insert("1.0", movie_synopsis)
-canvas.create_window(200, 120, anchor="w", window=synopsis_text)
+# Update suggestions when search bar text changes
+search_var.trace_add("write", lambda *args: update_suggestions())
 
 # Run the main event loop
 window.mainloop()
