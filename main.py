@@ -69,15 +69,33 @@ def displayMovie(event=None):
         synopsisValue.insert("1.0", movieSynopsis)  # Insert the fetched movie synopsis
         synopsisValue.config(state="disabled")  # Disable the Text widget after inserting
         genreValue.config(text=movieGenre)  # Update the genre label with the movie genres
+        # Calculate the y-coordinate for the new director label based on the number of directors and actors
+        y_coord_director_label = 375 + len(director_widgets_dict) * 150 + len(actor_widgets_dict) * 150
 
+        # Update the "Director" label's position on the canvas
+        infoCanvas.yview_moveto(y_coord_director_label / infoCanvas.winfo_height())
         for row in list(actor_widgets_dict.keys()):
             delete_actor_info(row)
+    
         # Update the actor labels and text fields for each actor in the movie
         for idx, actor_data in enumerate(actors_data):
             create_actor_info(actor_data, idx)
-            
-        global current_cover_image
+        # Fetch the list of directors and their details for the movie using the movieId
+        conn = sqlite3.connect("imdb.db")
+        cursor = conn.cursor()
+        cursor.execute("SELECT directorName, directorAbout FROM directors INNER JOIN directs ON directors.directorID = directs.directorID WHERE directs.movieID=?", (movieId,))
+        directors_data = cursor.fetchall()
+        conn.close()
+        for row in list(director_widgets_dict.keys()):
+            delete_director_info(row)
+        infoCanvas.delete("director_label")
+        # Update the director labels and text fields for each director in the movie
+        for idx, director_data in enumerate(directors_data):
+            create_director_info(director_data, idx)    
+        # Calculate the y-coordinate for the new director label based on the row
         
+
+        global current_cover_image
         try:
             if movieCoverPath and os.path.exists(movieCoverPath):
                 coverImage = tk.PhotoImage(file=movieCoverPath)
@@ -103,16 +121,10 @@ def getMovies():
     conn.close()
     return movies
 
-# Function to create actor information
 actor_widgets_dict = {}
 # Function to create actor information
 def create_actor_info(actor_data, row):
     actor_name, character_name, description = actor_data
-
-    # Check if there is existing information for the given row
-    if row in actor_widgets_dict:
-        # Delete the existing actor information for the row
-        delete_actor_info(row)
 
     actor_frame = tk.Frame(infoCanvas, bg='gray')
     actor_value = ttk.Label(actor_frame, text=f"{actor_name} as {character_name}", font=("Arial", 12))
@@ -158,6 +170,64 @@ def delete_actor_info(row):
         # Update the canvas size to fit the remaining actors
         canvas_height = 375 + len(actor_widgets_dict) * 150
         infoCanvas.config(scrollregion=(0, 0, 300, canvas_height))
+
+director_widgets_dict = {}
+director_Label = None
+def create_director_info(director_data, row):
+    global director_Label
+    # Destroy the "Director" label if it exists
+    for child in infoCanvas.winfo_children():
+        if isinstance(child, ttk.Label) and child.cget("text") == "Director:":
+            child.destroy()
+
+    director_name, director_about = director_data
+
+    director_frame = tk.Frame(infoCanvas, bg='gray')
+    director_value = ttk.Label(director_frame, text=f"{director_name}", font=("Arial", 12))
+    director_value_info = tk.Text(director_frame, wrap="word", width=75, height=6)
+    director_value_info.insert("1.0", director_about)
+    director_value_info.configure(state="disabled")
+
+    # Store references to the director-related widgets in the dictionary
+    director_widgets_dict[row] = {
+        "frame": director_frame,
+        "label": director_value,
+        "text_widget": director_value_info
+    }
+
+    # Calculate the y-coordinate for the new director info based on the row
+    num_actors = len(actor_widgets_dict)
+    y_coord = 375 + row * 150 + num_actors*150
+
+    if row == 0:
+        # Place the "Director" label on the first row
+        director_label = ttk.Label(infoCanvas, text="Director:", font=("Arial", 12))
+        infoCanvas.create_window(25, y_coord-50, anchor="w", window=director_label)
+        
+    # Create the director frame and its widgets on the canvas
+    director_frame_id = infoCanvas.create_window(150, y_coord, anchor="w", window=director_frame)
+
+    # Position the label and text widget inside the frame
+    director_frame.grid_rowconfigure(0, weight=1)
+    director_frame.grid_columnconfigure(0, weight=1)
+    director_value.grid(row=0, column=0, padx=5, pady=5, sticky="w")
+    director_value_info.grid(row=1, column=0, padx=5, pady=5, sticky="w")
+
+def delete_director_info(row):
+    if row in director_widgets_dict:
+        # Get the dictionary containing the widget references for the given row
+        widgets = director_widgets_dict[row]
+        # Destroy the widgets and the frame associated with the row
+        widgets["label"].destroy()
+        widgets["text_widget"].destroy()
+        widgets["frame"].destroy()
+        # Remove the entry from the dictionary
+        del director_widgets_dict[row]
+
+        # Update the canvas size to fit the remaining directors
+        canvas_height = 375 + len(director_widgets_dict) * 150 + len(actor_widgets_dict)*150 + 75
+        infoCanvas.config(scrollregion=(0, 0, 300, canvas_height))
+
 
 def updateSuggestions(*args):
     # Get the text entered in the search bar
@@ -271,8 +341,9 @@ movieActor = (("Matt Smith", "Prince Daemon Targaryen", "Matt Smith is an Englis
               ("Emma D'arcy", "Queen Rhaenyra Targaryen", "British actor born in London. Emma D'Arcy is an actor and theatre-maker. Emma studied at the Ruskin School of Art. They are also the Joint Artistic Director of the Forward Arena Theatre Company. Their performance on stage in Christopher Shinn's 'Against' alongside actor Ben Whishaw was described as \"exceedingly likeable and sensitive\""),\
                 ("Olivia Cooke", "Queen Alicent Hightower", "Olivia Cooke was born and raised in Oldham, a former textile manufacturing town in Greater Manchester, North West England. She comes from a family of non-actors; her father, John, is a retired police officer, and her mother is a sales representative. Cooke attended Royton and Crompton Secondary School and studied drama at Oldham Sixth Form College, leaving before the end of her A-levels to star in Blackout."),\
                     )
-movieDirector = (("Sam Hargrave", "Sam Hargrave is known for Extraction (2020), Avengers: Endgame (2019) and Atomic Blonde (2017)."))
+movieDirector = (("Ryan J. Condalv", "Ryan J. Condal is known for House of the Dragon (2022), Rampage (2018) and Colony (2016)."))
 currentMovieActor = movieActor
+currentMovieDirector = movieDirector
 #Movie Information
 # Canvas
 infoCanvas = tk.Canvas(window, width=800, height=600, bg='#433E3E', highlightbackground='#433E3E')
@@ -333,13 +404,12 @@ infoCanvas.create_window(150, 230, anchor="w", window=synopsisValue)
 
 # Movie Cast
 castLabel = ttk.Label(infoCanvas, text="Cast:", font=("Arial", 12))
-infoCanvas.create_window(25, 325, anchor="w", window=castLabel)
+infoCanvas.create_window(25, 320, anchor="w", window=castLabel)
 for idx, actor_info in enumerate(movieActor):
     create_actor_info(actor_info, idx)
-
+create_director_info(movieDirector, 0)
 # Update the scrollable region initially
 update_canvas_scrollregion()
-
 ##### RUN #######
 # Main Window
 window.mainloop()
