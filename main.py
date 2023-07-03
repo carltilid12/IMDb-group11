@@ -54,7 +54,7 @@ def displayMovie(event=None):
         # Fetch the list of actors and their roles in the movie using the movieId
         conn = sqlite3.connect("imdb.db")
         cursor = conn.cursor()
-        cursor.execute("SELECT actors.actorName, casts.characterPlayed, actors.about FROM actors INNER JOIN casts ON actors.actorId = casts.actorId WHERE casts.movieID=?", (movieId,))
+        cursor.execute("SELECT actors.actorName, casts.character, actors.about FROM actors INNER JOIN casts ON actors.actorId = casts.actorId WHERE casts.movieID=?", (movieId,))
         actors_data = cursor.fetchall()
         conn.close()
 
