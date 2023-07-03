@@ -70,6 +70,8 @@ def displayMovie(event=None):
         synopsisValue.config(state="disabled")  # Disable the Text widget after inserting
         genreValue.config(text=movieGenre)  # Update the genre label with the movie genres
 
+        for row in list(actor_widgets_dict.keys()):
+            delete_actor_info(row)
         # Update the actor labels and text fields for each actor in the movie
         for idx, actor_data in enumerate(actors_data):
             create_actor_info(actor_data, idx)
@@ -103,12 +105,15 @@ def getMovies():
 
 # Function to create actor information
 actor_widgets_dict = {}
+# Function to create actor information
 def create_actor_info(actor_data, row):
     actor_name, character_name, description = actor_data
+
     # Check if there is existing information for the given row
     if row in actor_widgets_dict:
         # Delete the existing actor information for the row
         delete_actor_info(row)
+
     actor_frame = tk.Frame(infoCanvas, bg='gray')
     actor_value = ttk.Label(actor_frame, text=f"{actor_name} as {character_name}", font=("Arial", 12))
     actor_value_info = tk.Text(actor_frame, wrap="word", width=75, height=6)
@@ -133,6 +138,11 @@ def create_actor_info(actor_data, row):
     actor_frame.grid_columnconfigure(0, weight=1)
     actor_value.grid(row=0, column=0, padx=5, pady=5, sticky="w")
     actor_value_info.grid(row=1, column=0, padx=5, pady=5, sticky="w")
+
+    # Update the canvas scroll region to fit all the actors
+    canvas_height = 375 + (row) * 150 + 75
+    infoCanvas.config(scrollregion=(0, 0, 300, canvas_height))
+
 # Function to delete actor information
 def delete_actor_info(row):
     if row in actor_widgets_dict:
@@ -145,6 +155,9 @@ def delete_actor_info(row):
         # Remove the entry from the dictionary
         del actor_widgets_dict[row]
 
+        # Update the canvas size to fit the remaining actors
+        canvas_height = 375 + len(actor_widgets_dict) * 150
+        infoCanvas.config(scrollregion=(0, 0, 300, canvas_height))
 
 def updateSuggestions(*args):
     # Get the text entered in the search bar
@@ -152,7 +165,6 @@ def updateSuggestions(*args):
     movies = getMovies()
     # Filter the movies based on the search text
     filtered_movies = [movie for movie in movies if search_text.lower() in movie.lower()]
-
     # Clear the current suggestions in the listbox
     suggestions_listbox.delete(0, tk.END)
 
@@ -160,7 +172,7 @@ def updateSuggestions(*args):
     if search_text and filtered_movies:
         for movie in filtered_movies:
             suggestions_listbox.insert(tk.END, movie)
-        suggestions_listbox.place(x=483, y=40)
+        suggestions_listbox.place(x=583, y=40)
         suggestions_listbox.lift()
     else:
         suggestions_listbox.place_forget()
@@ -252,12 +264,14 @@ movieLanguage = "English (United States)"
 movieLength = "1h 47m"
 movieYear = "2022"
 movieRatings = '8.5'
-movieGenre = "Action | Adventure | Drama" #split(tuplegenre)
+movieGenre = "Action | Adventure | Drama" 
 movieSynopsis = "An internal succession war within House Targaryen at the height of its power, 172 years before the birth of Daenerys Targaryen."
 
 movieActor = (("Matt Smith", "Prince Daemon Targaryen", "Matt Smith is an English actor who shot to fame in the UK aged 26 when he was cast by producer Steven Moffat as the Eleventh Doctor in the BBC's iconic science-fiction adventure series Doctor Who (2005)."),\
               ("Emma D'arcy", "Queen Rhaenyra Targaryen", "British actor born in London. Emma D'Arcy is an actor and theatre-maker. Emma studied at the Ruskin School of Art. They are also the Joint Artistic Director of the Forward Arena Theatre Company. Their performance on stage in Christopher Shinn's 'Against' alongside actor Ben Whishaw was described as \"exceedingly likeable and sensitive\""),\
-                ("Olivia Cooke", "Queen Alicent Hightower", "Olivia Cooke was born and raised in Oldham, a former textile manufacturing town in Greater Manchester, North West England. She comes from a family of non-actors; her father, John, is a retired police officer, and her mother is a sales representative. Cooke attended Royton and Crompton Secondary School and studied drama at Oldham Sixth Form College, leaving before the end of her A-levels to star in Blackout."))
+                ("Olivia Cooke", "Queen Alicent Hightower", "Olivia Cooke was born and raised in Oldham, a former textile manufacturing town in Greater Manchester, North West England. She comes from a family of non-actors; her father, John, is a retired police officer, and her mother is a sales representative. Cooke attended Royton and Crompton Secondary School and studied drama at Oldham Sixth Form College, leaving before the end of her A-levels to star in Blackout."),\
+                    )
+movieDirector = (("Sam Hargrave", "Sam Hargrave is known for Extraction (2020), Avengers: Endgame (2019) and Atomic Blonde (2017)."))
 currentMovieActor = movieActor
 #Movie Information
 # Canvas

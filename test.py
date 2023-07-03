@@ -1,38 +1,25 @@
 import tkinter as tk
 from tkinter import ttk
 
-# Function to get the movie titles (you can modify this to retrieve data from your database)
-def getMovies():
-    return ["Movie 1", "Movie 2", "Movie 3", "Movie 4", "Movie 5"]
+def create_tab(tab_control, title, content):
+    frame = ttk.Frame(tab_control)
+    label = ttk.Label(frame, text=content)
+    label.pack(padx=10, pady=10)
+    tab_control.add(frame, text=title)
 
-# Function to update the search suggestion dropdown based on the current text in the search bar
-def update_suggestions():
-    search_text = search_var.get()
-    if search_text:
-        suggestions = [movie for movie in movies if search_text.lower() in movie.lower()]
-        suggestion_var.set(suggestions)
-        suggestion_listbox.place(x=110, y=65 + search_entry.winfo_height())  # Place below the search bar
-    else:
-        suggestion_listbox.place_forget()  # Hide the dropdown if no active text
+def main():
+    root = tk.Tk()
+    root.title("Simple Tabbed Interface")
+    root.geometry("400x300")
 
-# Create the main window
-window = tk.Tk()
-window.title("Movie Information")
+    tab_control = ttk.Notebook(root)
+    tab_control.pack(fill=tk.BOTH, expand=True)
 
-# Create a search bar
-search_var = tk.StringVar()
-search_entry = ttk.Entry(window, textvariable=search_var, width=40)
-search_entry.place(x=0, y=0)
+    create_tab(tab_control, "Tab 1", "This is content for Tab 1")
+    create_tab(tab_control, "Tab 2", "Welcome to Tab 2")
+    create_tab(tab_control, "Tab 3", "Content of Tab 3 goes here")
 
-# Get movie titles
-movies = getMovies()
+    root.mainloop()
 
-# Create a listbox for search suggestions
-suggestion_var = tk.StringVar()
-suggestion_listbox = tk.Listbox(window, listvariable=suggestion_var, width=40, height=5)
-
-# Update suggestions when search bar text changes
-search_var.trace_add("write", lambda *args: update_suggestions())
-
-# Run the main event loop
-window.mainloop()
+if __name__ == "__main__":
+    main()
