@@ -341,7 +341,8 @@ movieActor = (("Matt Smith", "Prince Daemon Targaryen", "Matt Smith is an Englis
               ("Emma D'arcy", "Queen Rhaenyra Targaryen", "British actor born in London. Emma D'Arcy is an actor and theatre-maker. Emma studied at the Ruskin School of Art. They are also the Joint Artistic Director of the Forward Arena Theatre Company. Their performance on stage in Christopher Shinn's 'Against' alongside actor Ben Whishaw was described as \"exceedingly likeable and sensitive\""),\
                 ("Olivia Cooke", "Queen Alicent Hightower", "Olivia Cooke was born and raised in Oldham, a former textile manufacturing town in Greater Manchester, North West England. She comes from a family of non-actors; her father, John, is a retired police officer, and her mother is a sales representative. Cooke attended Royton and Crompton Secondary School and studied drama at Oldham Sixth Form College, leaving before the end of her A-levels to star in Blackout."),\
                     )
-movieDirector = (("Sam Hargrave", "Sam Hargrave is known for Extraction (2020), Avengers: Endgame (2019) and Atomic Blonde (2017)."))
+movieDirector = (("Ryan J. Condalv", "Ryan J. Condal is known for House of the Dragon (2022), Rampage (2018) and Colony (2016)."))
+movieProducer = "Warner Bros Studios Leavesden"
 currentMovieActor = movieActor
 currentMovieDirector = movieDirector
 #Movie Information
