@@ -328,8 +328,8 @@ info_button.grid(row=0, column=4, padx=(10,40), pady=10)
 
 # Create a Treeview widget to display the list of movies
 movies_frame = ttk.Frame(window)
-movies_frame.grid(row=1, column=4, padx=(15, 70), pady=(20,0))
-movie_tree = ttk.Treeview(movies_frame, columns=("Movies"), show="headings", height=30)
+movies_frame.grid(row=1, column=4, padx=(15, 70), pady=(15,25))
+movie_tree = ttk.Treeview(movies_frame, columns=("Movies"), show="headings", height=29)
 movie_tree.heading("Movies", text="Title", anchor='w')
 movie_tree.column("Movies", anchor='w', width=260)
 movie_tree.pack(side=tk.LEFT, fill=tk.BOTH)
