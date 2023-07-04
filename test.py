@@ -1,27 +1,24 @@
 import tkinter as tk
-from tkinter import ttk
+from PIL import Image, ImageTk
 
-def create_tab(tab_control, title, content):
-    frame = ttk.Frame(tab_control)
-    label = ttk.Label(frame, text=content)
-    label.pack(padx=10, pady=10)
-    tab_control.add(frame, text=title)
+# Create the main window
+window = tk.Tk()
+window.title("Movie Details")
+window.geometry("800x600")
 
-def main():
-    root = tk.Tk()
-    root.title("Simple Tabbed Interface")
-    root.geometry("400x300")
+# Load the background image
+background_image = Image.open("assets\\bossBaby.png")
+background_image = background_image.resize((800, 600), Image.ANTIALIAS)  # Resize the image to fit the window
 
-    tab_control = ttk.Notebook(root)
-    tab_control.pack(fill=tk.BOTH, expand=True)
+# Create a Tkinter PhotoImage from the PIL image
+background_photo = ImageTk.PhotoImage(background_image)
 
-    create_tab(tab_control, "Tab 1", "This is content for Tab 1")
-    create_tab(tab_control, "Tab 2", "Welcome to Tab 2")
-    create_tab(tab_control, "Tab 3", "Content of Tab 3 goes here")
+# Create a Canvas widget to display the background image
+canvas = tk.Canvas(window, width=800, height=600)
+canvas.pack()
 
-    root.mainloop()
+# Display the background image on the canvas
+canvas.create_image(0, 0, anchor=tk.NW, image=background_photo)
 
-if __name__ == "__main__":
-    main()
-
-# fork test >> Hi carl!
+# Run the Tkinter main loop
+window.mainloop()
