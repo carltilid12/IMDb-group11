@@ -45,6 +45,9 @@ def displayMovie(event=None):
         cursor = conn.cursor()
         cursor.execute("SELECT genreName FROM genre WHERE movieId=?", (movieId,))
         genres = cursor.fetchall()
+        cursor.execute("SELECT producerName FROM producers INNER JOIN produces ON producers.producerID = produces.producerID WHERE produces.movieID=?", (movieId,))
+        producerDetails = cursor.fetchone()
+        movieProducer = producerDetails[0]
         conn.close()
         # Compile the genres into a list
         genre_list = [genre[0] for genre in genres]
@@ -69,8 +72,9 @@ def displayMovie(event=None):
         synopsisValue.insert("1.0", movieSynopsis)  # Insert the fetched movie synopsis
         synopsisValue.config(state="disabled")  # Disable the Text widget after inserting
         genreValue.config(text=movieGenre)  # Update the genre label with the movie genres
+        producerValue.config(text=movieProducer)
         # Calculate the y-coordinate for the new director label based on the number of directors and actors
-        y_coord_director_label = 375 + len(director_widgets_dict) * 150 + len(actor_widgets_dict) * 150
+        y_coord_director_label = 400 + len(director_widgets_dict) * 150 + len(actor_widgets_dict) * 150
 
         # Update the "Director" label's position on the canvas
         infoCanvas.yview_moveto(y_coord_director_label / infoCanvas.winfo_height())
@@ -140,7 +144,7 @@ def create_actor_info(actor_data, row):
     }
 
     # Calculate the y-coordinate for the new actor info based on the row
-    y_coord = 375 + row * 150
+    y_coord = 400 + row * 150
 
     # Create the actor frame and its widgets on the canvas
     actor_frame_id = infoCanvas.create_window(150, y_coord, anchor="w", window=actor_frame)
@@ -152,7 +156,7 @@ def create_actor_info(actor_data, row):
     actor_value_info.grid(row=1, column=0, padx=5, pady=5, sticky="w")
 
     # Update the canvas scroll region to fit all the actors
-    canvas_height = 375 + (row) * 150 + 75
+    canvas_height = 400 + (row) * 150 + 75
     infoCanvas.config(scrollregion=(0, 0, 300, canvas_height))
 
 # Function to delete actor information
@@ -168,7 +172,7 @@ def delete_actor_info(row):
         del actor_widgets_dict[row]
 
         # Update the canvas size to fit the remaining actors
-        canvas_height = 375 + len(actor_widgets_dict) * 150
+        canvas_height = 400 + len(actor_widgets_dict) * 150
         infoCanvas.config(scrollregion=(0, 0, 300, canvas_height))
 
 director_widgets_dict = {}
@@ -197,7 +201,7 @@ def create_director_info(director_data, row):
 
     # Calculate the y-coordinate for the new director info based on the row
     num_actors = len(actor_widgets_dict)
-    y_coord = 375 + row * 150 + num_actors*150
+    y_coord = 400 + row * 150 + num_actors*150
 
     if row == 0:
         # Place the "Director" label on the first row
@@ -225,9 +229,8 @@ def delete_director_info(row):
         del director_widgets_dict[row]
 
         # Update the canvas size to fit the remaining directors
-        canvas_height = 375 + len(director_widgets_dict) * 150 + len(actor_widgets_dict)*150 + 75
+        canvas_height = 400 + len(director_widgets_dict) * 150 + len(actor_widgets_dict)*150 + 75
         infoCanvas.config(scrollregion=(0, 0, 300, canvas_height))
-
 
 def updateSuggestions(*args):
     # Get the text entered in the search bar
@@ -345,6 +348,7 @@ movieDirector = (("Ryan J. Condalv", "Ryan J. Condal is known for House of the D
 movieProducer = "Warner Bros Studios Leavesden"
 currentMovieActor = movieActor
 currentMovieDirector = movieDirector
+
 #Movie Information
 # Canvas
 infoCanvas = tk.Canvas(window, width=800, height=600, bg='#433E3E', highlightbackground='#433E3E')
@@ -394,18 +398,21 @@ genreLabel = ttk.Label(infoCanvas, text="Genre:", font=("Arial", 12))
 infoCanvas.create_window(25, 150, anchor="w", window=genreLabel)
 genreValue = ttk.Label(infoCanvas, text=movieGenre, font=("Arial", 12))
 infoCanvas.create_window(150, 150, anchor="w", window=genreValue)
-
 # Movie Synopsis
 synopsisLabel = ttk.Label(infoCanvas, text="Synopsis:", font=("Arial", 12))
 infoCanvas.create_window(25, 175, anchor="w", window=synopsisLabel)
-synopsisValue = tk.Text(infoCanvas, wrap="word", width=50, height=8)
+synopsisValue = tk.Text(infoCanvas, wrap="word", width=50, height=7.5)
 synopsisValue.insert("1.0", movieSynopsis)
 synopsisValue.configure(state="disabled")
 infoCanvas.create_window(150, 230, anchor="w", window=synopsisValue)
-
+# Movie Producer
+producerLabel = ttk.Label(infoCanvas, text="Producer:", font=("Arial", 12))
+infoCanvas.create_window(25, 310, anchor="w", window=producerLabel)
+producerValue = ttk.Label(infoCanvas, text=movieProducer, font=("Arial", 12))
+infoCanvas.create_window(150, 310, anchor="w", window=producerValue)
 # Movie Cast
 castLabel = ttk.Label(infoCanvas, text="Cast:", font=("Arial", 12))
-infoCanvas.create_window(25, 320, anchor="w", window=castLabel)
+infoCanvas.create_window(25, 345, anchor="w", window=castLabel)
 for idx, actor_info in enumerate(movieActor):
     create_actor_info(actor_info, idx)
 create_director_info(movieDirector, 0)
