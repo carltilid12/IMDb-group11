@@ -80,7 +80,7 @@ def displayMovie(event=None):
         infoCanvas.yview_moveto(y_coord_director_label / infoCanvas.winfo_height())
         for row in list(actor_widgets_dict.keys()):
             delete_actor_info(row)
-    
+
         # Update the actor labels and text fields for each actor in the movie
         for idx, actor_data in enumerate(actors_data):
             create_actor_info(actor_data, idx)
@@ -95,9 +95,9 @@ def displayMovie(event=None):
         infoCanvas.delete("director_label")
         # Update the director labels and text fields for each director in the movie
         for idx, director_data in enumerate(directors_data):
-            create_director_info(director_data, idx)    
+            create_director_info(director_data, idx)
         # Calculate the y-coordinate for the new director label based on the row
-        
+
 
         global current_cover_image
         try:
@@ -108,8 +108,8 @@ def displayMovie(event=None):
         except FileNotFoundError:
             coverImage = tk.PhotoImage(file="assets\\Null.png")
         coverCanvas.itemconfig(movieCover, image=coverImage)
-        current_cover_image = coverImage    
-        
+        current_cover_image = coverImage
+
     else:
         # Display a pop-up warning if the movie title does not exist
         messagebox.showwarning("Movie Not Found", f"The movie '{search_text}' does not exist in the database.")
@@ -130,11 +130,12 @@ actor_widgets_dict = {}
 def create_actor_info(actor_data, row):
     actor_name, character_name, description = actor_data
 
-    actor_frame = tk.Frame(infoCanvas, bg='gray')
-    actor_value = ttk.Label(actor_frame, text=f"{actor_name} as {character_name}", font=("Arial", 12))
-    actor_value_info = tk.Text(actor_frame, wrap="word", width=75, height=6)
+    actor_frame = tk.Frame(infoCanvas, bg='#3B3A3B')
+    actor_value = ttk.Label(actor_frame, text=f"{actor_name} as {character_name}", font=("Arial", 12, "bold"))
+    actor_value .configure(background='#3B3A3B', foreground="white")
+    actor_value_info = tk.Text(actor_frame, wrap="word", width=85, height=6)
     actor_value_info.insert("1.0", description)
-    actor_value_info.configure(state="disabled")
+    actor_value_info.configure(state="disabled", font=("Arial", 9, "italic"))
 
     # Store references to the actor-related widgets in the dictionary
     actor_widgets_dict[row] = {
@@ -186,11 +187,12 @@ def create_director_info(director_data, row):
 
     director_name, director_about = director_data
 
-    director_frame = tk.Frame(infoCanvas, bg='gray')
-    director_value = ttk.Label(director_frame, text=f"{director_name}", font=("Arial", 12))
-    director_value_info = tk.Text(director_frame, wrap="word", width=75, height=6)
+    director_frame = tk.Frame(infoCanvas, bg='#3B3A3B')
+    director_value = ttk.Label(director_frame, text=f"{director_name}", font=("Arial", 12, "bold"))
+    director_value_info = tk.Text(director_frame, wrap="word", width=85, height=6)
+    director_value.configure(background='#3B3A3B', foreground="white")
     director_value_info.insert("1.0", director_about)
-    director_value_info.configure(state="disabled")
+    director_value_info.configure(state="disabled", font=("Arial", 9, "italic"))
 
     # Store references to the director-related widgets in the dictionary
     director_widgets_dict[row] = {
@@ -206,8 +208,9 @@ def create_director_info(director_data, row):
     if row == 0:
         # Place the "Director" label on the first row
         director_label = ttk.Label(infoCanvas, text="Director:", font=("Arial", 12))
+        director_label.configure(background='#28282D', foreground="white")
         infoCanvas.create_window(10, y_coord-50, anchor="w", window=director_label)
-        
+
     # Create the director frame and its widgets on the canvas
     director_frame_id = infoCanvas.create_window(135, y_coord, anchor="w", window=director_frame)
 
@@ -281,18 +284,18 @@ def on_movie_select(event):
 # MAIN WINDOW
 window = tk.Tk()
 window.title("IMDb")
-window.configure(bg='#333030')
+window.configure(bg='#000000')
 
 # Get the screen width and height
-screen_width = window.winfo_screenwidth()      
+screen_width = window.winfo_screenwidth()
 screen_height = window.winfo_screenheight()
 
 # Set the desired window size
-window_width = 1366                         
+window_width = 1366
 window_height = 768
 
 # Calculate the window position
-x = (screen_width - window_width) // 2          
+x = (screen_width - window_width) // 2
 y = (screen_height - window_height) // 2
 
 # Set the window position
@@ -307,7 +310,7 @@ logo_image = Image.open(logo_path)
 logo_photo = ImageTk.PhotoImage(logo_image)
 
 # Create the logo label
-logo_label = ttk.Label(window, image=logo_photo, background='#333030')
+logo_label = ttk.Label(window, image=logo_photo, background='#000000')
 logo_label.grid(row=0, column=0, padx=0, pady=10, columnspan=2)
 
 # Create the search bar
@@ -335,18 +338,24 @@ movie_tree.column("Movies", anchor='w', width=260)
 movie_tree.pack(side=tk.LEFT, fill=tk.BOTH)
 movie_tree.heading("Movies", text="List of Movies", command=lambda c="Movies": sort_column(movie_tree, c))
 movie_tree.bind("<<TreeviewSelect>>", on_movie_select)
+
+# Configure font and color for Treeview
+style = ttk.Style()
+style.configure("Treeview", font=("Arial", 8), foreground="white", background="#28282D")
+
 # Populate the Treeview with movie data
 movies = getMovies()
 for movie in movies:
     movie_tree.insert("", "end", values=(movie,))
 sort_column(movie_tree, "Movies")
-movie_tree.bind("<Double-Button-1>", lambda event: (displayMovie() if movie_tree.focus() else None, \
+movie_tree.bind("<Double-Button-1>", lambda event: (displayMovie() if movie_tree.focus() else None,
                                                     suggestions_listbox.place_forget()))
+
 
 #### MOVIE INFO ####
 
 #Movie Cover
-coverCanvas = tk.Canvas(window, width=270, height=400, bg='black', highlightbackground='#333030')
+coverCanvas = tk.Canvas(window, width=270, height=400, bg='black', highlightbackground='#000000')
 coverCanvas.grid(row=1, column=0, padx=0, pady=(15, 230), columnspan=2)
 
 movieCoverPath = "assets\\houseOfDragon.png"
@@ -355,13 +364,14 @@ coverImage = tk.PhotoImage(file=movieCoverVar)
 movieCover = coverCanvas.create_image(135, 200, image=coverImage)
 currentCoverImage = coverImage
 
+
 # Default Movie Details
 movieTitle = "House of the Dragon"
 movieLanguage = "English (United States)"
 movieLength = "1h 47m"
 movieYear = "2022"
 movieRatings = '8.5'
-movieGenre = "Action | Adventure | Drama" 
+movieGenre = "Action | Adventure | Drama"
 movieSynopsis = "An internal succession war within House Targaryen at the height of its power, 172 years before the birth of Daenerys Targaryen."
 
 movieActor = (("Matt Smith", "Prince Daemon Targaryen", "Matt Smith is an English actor who shot to fame in the UK aged 26 when he was cast by producer Steven Moffat as the Eleventh Doctor in the BBC's iconic science-fiction adventure series Doctor Who (2005)."),\
@@ -375,67 +385,83 @@ currentMovieDirector = movieDirector
 
 #Movie Information
 # Canvas
-infoCanvas = tk.Canvas(window, width=775, height=600, bg='#433E3E', highlightbackground='#433E3E')
+infoCanvas = tk.Canvas(window, width=770, height=600, bg='#28282D', highlightbackground='#28282D')
 infoCanvas.grid(row=1, column=2, padx=0, pady=(0,10), columnspan=1)
 
 # Create a frame to hold the contents of the canvas
-infoFrame = tk.Frame(infoCanvas, bg='#433E3E')
+infoFrame = tk.Frame(infoCanvas, bg='#28282D')
 infoCanvas.create_window(0, 0, anchor='nw', window=infoFrame)
 
 # Configure the scrollbar
 scrollbar = tk.Scrollbar(window, orient='vertical', command=infoCanvas.yview)
 scrollbar.place(relx=1.0, rely=0, relheight=1.0, anchor='ne')
 infoCanvas.configure(yscrollcommand=scrollbar.set)
-infoCanvas.bind("<Enter>", lambda event: infoCanvas.bind_all('<MouseWheel>', lambda e: \
+infoCanvas.bind("<Enter>", lambda event: infoCanvas.bind_all('<MouseWheel>', lambda e:
     infoCanvas.yview_scroll(-1 * (e.delta // 120), 'units')))
 infoCanvas.bind("<Leave>", lambda event: infoCanvas.unbind_all('<MouseWheel>'))
 # Bind the function to the canvas size change event
 infoCanvas.bind('<Configure>', update_canvas_scrollregion)
 
 # Movie Title
-titleLabel = ttk.Label(infoCanvas, text="Movie Title: ", font=("Arial", 12))
+titleLabel = ttk.Label(infoCanvas, text="Movie Title: ", font=("Arial ", 11))
+titleLabel.configure(background='#28282D', foreground="white")
 infoCanvas.create_window(10, 25, anchor="w", window=titleLabel)
-titleValue = ttk.Label(infoCanvas, text=movieTitle, font=("Arial", 12))
+titleValue = ttk.Label(infoCanvas, text=movieTitle, font=("Arial Black", 18, "bold"))
+titleValue.configure(background='#28282D', foreground="white")
 infoCanvas.create_window(135, 25, anchor="w", window=titleValue)
 # Movie Language
-languageLabel = ttk.Label(infoCanvas, text="Language: ", font=("Arial", 12))
-infoCanvas.create_window(10, 50, anchor="w", window=languageLabel)
-languageValue = ttk.Label(infoCanvas, text=movieLanguage, font=("Arial", 12))
-infoCanvas.create_window(135, 50, anchor="w", window=languageValue)
+languageLabel = ttk.Label(infoCanvas, text="Language: ", font=("Arial", 11))
+languageLabel.configure(background='#28282D', foreground="white")
+infoCanvas.create_window(10, 55, anchor="w", window=languageLabel)
+languageValue = ttk.Label(infoCanvas, text=movieLanguage, font=("Arial", 10, "bold"))
+languageValue.configure(background='#28282D', foreground="white")
+infoCanvas.create_window(135, 55, anchor="w", window=languageValue)
 # Movie Length
-lengthLabel = ttk.Label(infoCanvas, text="Length: ", font=("Arial", 12))
+lengthLabel = ttk.Label(infoCanvas, text="Length: ", font=("Arial", 11))
+lengthLabel.configure(background='#28282D', foreground="white")
 infoCanvas.create_window(10, 75, anchor="w", window=lengthLabel)
 lengthValue = ttk.Label(infoCanvas, text=movieLength, font=("Arial", 12))
+lengthValue.configure(background='#28282D', foreground="white")
 infoCanvas.create_window(135, 75, anchor="w", window=lengthValue)
 # Movie Year
-yearLabel = ttk.Label(infoCanvas, text="Year:", font=("Arial", 12))
+yearLabel = ttk.Label(infoCanvas, text="Year:", font=("Arial", 11))
+yearLabel.configure(background='#28282D', foreground="white")
 infoCanvas.create_window(10, 100, anchor="w", window=yearLabel)
-yearValue = ttk.Label(infoCanvas, text=movieYear, font=("Arial", 12))
+yearValue = ttk.Label(infoCanvas, text=movieYear, font=("Arial", 11))
+yearValue.configure(background='#28282D', foreground="white")
 infoCanvas.create_window(135, 100, anchor="w", window=yearValue)
 # Movie Ratings
-ratingsLabel = ttk.Label(infoCanvas, text="Ratings:", font=("Arial", 12))
+ratingsLabel = ttk.Label(infoCanvas, text="Ratings:", font=("Arial", 11))
+ratingsLabel.configure(background='#28282D', foreground="white")
 infoCanvas.create_window(10, 125, anchor="w", window=ratingsLabel)
-ratingsValue = ttk.Label(infoCanvas, text=movieRatings, font=("Arial", 12))
+ratingsValue = ttk.Label(infoCanvas, text=movieRatings, font=("Arial", 11))
+ratingsValue.configure(background='#28282D', foreground="white")
 infoCanvas.create_window(135, 125, anchor="w", window=ratingsValue)
 # Movie Genre
-genreLabel = ttk.Label(infoCanvas, text="Genre:", font=("Arial", 12))
-infoCanvas.create_window(10, 150, anchor="w", window=genreLabel)
-genreValue = ttk.Label(infoCanvas, text=movieGenre, font=("Arial", 12))
-infoCanvas.create_window(135, 150, anchor="w", window=genreValue)
+genreLabel = ttk.Label(infoCanvas, text="Genre:", font=("Arial", 11))
+genreLabel.configure(background='#28282D', foreground="white")
+infoCanvas.create_window(10, 155, anchor="w", window=genreLabel)
+genreValue = ttk.Label(infoCanvas, text=movieGenre, font=("Arial", 12, "bold"))
+genreValue.configure(background='#28282D', foreground="white")
+infoCanvas.create_window(135, 155, anchor="w", window=genreValue)
 # Movie Synopsis
-synopsisLabel = ttk.Label(infoCanvas, text="Synopsis:", font=("Arial", 12))
-infoCanvas.create_window(10, 175, anchor="w", window=synopsisLabel)
-synopsisValue = tk.Text(infoCanvas, wrap="word", width=50, height=7.5)
+synopsisLabel = ttk.Label(infoCanvas, text="Synopsis:", font=("Arial", 11))
+synopsisLabel .configure(background='#28282D', foreground="white")
+infoCanvas.create_window(10, 210, anchor="w", window=synopsisLabel)
+synopsisValue = tk.Text(infoCanvas, wrap="word", width=76, height=4, bg='#28282D', highlightthickness=0, borderwidth=0,fg='white')
 synopsisValue.insert("1.0", movieSynopsis)
-synopsisValue.configure(state="disabled")
+synopsisValue.configure(state="disabled", font=("Arial", 11,"italic"))
 infoCanvas.create_window(135, 230, anchor="w", window=synopsisValue)
 # Movie Producer
-producerLabel = ttk.Label(infoCanvas, text="Producer:", font=("Arial", 12))
+producerLabel = ttk.Label(infoCanvas, text="Producer:", font=("Arial", 11))
+producerLabel.configure(background='#28282D', foreground="white")
 infoCanvas.create_window(10, 310, anchor="w", window=producerLabel)
-producerValue = ttk.Label(infoCanvas, text=movieProducer, font=("Arial", 12))
+producerValue = ttk.Label(infoCanvas, text=movieProducer, font=("Arial", 11, "bold"))
+producerValue.configure(background='#28282D', foreground="white")
 infoCanvas.create_window(135, 310, anchor="w", window=producerValue)
 # Movie Cast
-castLabel = ttk.Label(infoCanvas, text="Cast:", font=("Arial", 12))
+castLabel = ttk.Label(infoCanvas, text="Cast:", font=("Arial", 11))
+castLabel.configure(background='#28282D', foreground="white")
 infoCanvas.create_window(10, 345, anchor="w", window=castLabel)
 for idx, actor_info in enumerate(movieActor):
     create_actor_info(actor_info, idx)
