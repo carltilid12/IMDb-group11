@@ -129,6 +129,26 @@ def getMovies():
     conn.close()
     return movies
 
+def getMoviesInfo():
+    conn = sqlite3.connect("imdb.db")
+    cursor = conn.cursor()
+
+    cursor.execute("SELECT DISTINCT movies.movieID, movies.title, movies.language, \
+        movies.year, movies.ratings, \
+        directors.directorName, producers.producerName, actors.actorName, genre.genreName \
+        FROM movies \
+        LEFT JOIN genre ON movies.movieID = genre.movieID \
+        LEFT JOIN directs ON movies.movieID = directs.movieID \
+        LEFT JOIN directors ON directs.directorID = directors.directorID \
+        LEFT JOIN produces ON movies.movieID = produces.movieID \
+        LEFT JOIN producers ON produces.producerID = producers.producerID \
+        LEFT JOIN casts ON movies.movieID = casts.movieID \
+        LEFT JOIN actors ON casts.actorID = actors.actorID") 
+    movies = cursor.fetchall()
+
+    conn.close()
+    return movies
+
 actor_widgets_dict = {}
 # Function to create actor information
 def create_actor_info(actor_data, row):
@@ -241,16 +261,22 @@ def delete_director_info(row):
 
 def updateSuggestions(*args):
     # Get the text entered in the search bar
-    search_text = search_var.get()
-    movies = getMovies()
+    search_text = search_var.get().lower()  # Convert search text to lowercase
+    movies_info = getMoviesInfo()
+
+    # Use a set to store unique movie titles
+    unique_movies = set()
+
     # Filter the movies based on the search text
-    filtered_movies = [movie for movie in movies if search_text.lower() in movie.lower()]
+    for movie in movies_info:
+        if any(search_text in str(info).lower() for info in movie):
+            unique_movies.add(movie[1])  # Add the movie title to the set
     # Clear the current suggestions in the listbox
     suggestions_listbox.delete(0, tk.END)
 
     # Update the listbox with the filtered movie titles
-    if search_text and filtered_movies:
-        for movie in filtered_movies:
+    if search_text and unique_movies:
+        for movie in unique_movies:
             suggestions_listbox.insert(tk.END, movie)
         suggestions_listbox.place(x=422, y=51)
         suggestions_listbox.lift()
@@ -363,7 +389,7 @@ suggestions_listbox.bind("<<ListboxSelect>>", lambda event: on_suggestion_select
 
 # Create a Treeview widget to display the list of movies
 movies_frame = ttk.Frame(window)
-movies_frame.grid(row=1, column=4, padx=(15, 70), pady=(15,25))
+movies_frame.grid(row=1, column=4, padx=(15, 70), pady=(15,25), rowspan=3, columnspan=2)
 movie_tree = ttk.Treeview(movies_frame, columns=("Movies"), show="headings", height=29)
 movie_tree.heading("Movies", text="Title", anchor='w')
 movie_tree.column("Movies", anchor='w', width=260)
@@ -396,6 +422,8 @@ coverImage = tk.PhotoImage(file=movieCoverVar)
 movieCover = coverCanvas.create_image(135, 200, image=coverImage)
 currentCoverImage = coverImage
 
+# Bookmark Button
+
 
 # Default Movie Details
 movieTitle = "House of the Dragon"
@@ -415,10 +443,10 @@ movieProducer = "Warner Bros Studios Leavesden"
 currentMovieActor = movieActor
 currentMovieDirector = movieDirector
 
-#Movie Information
+# Movie Information
 # Canvas
 infoCanvas = tk.Canvas(window, width=770, height=600, bg='#28282D', highlightbackground='#28282D')
-infoCanvas.grid(row=1, column=2, padx=0, pady=(0,10), columnspan=2)
+infoCanvas.grid(row=1, column=2, padx=0, pady=(0,10), columnspan=2, rowspan=3)
 
 # Create a frame to hold the contents of the canvas
 infoFrame = tk.Frame(infoCanvas, bg='#28282D')
