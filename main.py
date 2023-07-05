@@ -17,6 +17,9 @@ def displayMovie(event=None):
     cursor = conn.cursor()
     cursor.execute("SELECT movieId FROM movies WHERE title=?", (search_text,))
     result = cursor.fetchone()
+    if result == None:
+        cursor.execute("SELECT movieId FROM movies WHERE movieId=?", (search_text,))
+        result = cursor.fetchone()
     conn.close()
 
     if result:
@@ -50,6 +53,7 @@ def displayMovie(event=None):
         movieProducer = producerDetails[0]
         conn.close()
         # Compile the genres into a list
+        stars = "\u2B50" * round(movieRatings)
         genre_list = [genre[0] for genre in genres]
         # Join the genres into a string with '|' separator
         movieGenre = " | ".join(genre_list)
@@ -66,7 +70,7 @@ def displayMovie(event=None):
         languageValue.config(text=movieLanguage)
         lengthValue.config(text=movieLength)
         yearValue.config(text=movieYear)
-        ratingsValue.config(text=movieRatings)
+        ratingsValue.config(text=f"{movieRatings} {stars}")
         synopsisValue.config(state="normal")  # Enable the Text widget
         synopsisValue.delete("1.0", "end")  # Clear existing text
         synopsisValue.insert("1.0", movieSynopsis)  # Insert the fetched movie synopsis
@@ -248,7 +252,7 @@ def updateSuggestions(*args):
     if search_text and filtered_movies:
         for movie in filtered_movies:
             suggestions_listbox.insert(tk.END, movie)
-        suggestions_listbox.place(x=420, y=40)
+        suggestions_listbox.place(x=422, y=51)
         suggestions_listbox.lift()
     else:
         suggestions_listbox.place_forget()
@@ -279,6 +283,7 @@ def on_movie_select(event):
 
         # Set the movie title in the search entry
         search_var.set(movie_title)
+
 ################################## MAIN #####################################
 
 # MAIN WINDOW
@@ -302,6 +307,28 @@ y = (screen_height - window_height) // 2
 window.geometry(f"{window_width}x{window_height}+{x}+{y}")
 window.state('zoomed')      # Maximize the window
 
+##### STYLES #######
+
+style = ttk.Style()
+style.theme_use('classic')
+style.configure("TButton", 
+                background="black", 
+                foreground="black",
+                highlightcolor="black",
+                padding=1,
+                borderwidth=0,
+                relief="flat")
+style.map("TButton", background=[("active", "#28282D")])
+style.configure("Search.TEntry", 
+                padding = 5,
+                highlightcolor="#28282D",
+                relief="flat",
+                selectbackground="white",
+                selectforeground="black", 
+                fieldbackground="#28282D",
+                insertcolor="#d7d7d2",
+                foreground="white")
+
 ##### FIRST ROW ########
 
 # Load the logo image
@@ -309,25 +336,30 @@ logo_path = "assets\IMDB_Logo_2016 1.png"  # Replace with the actual path to you
 logo_image = Image.open(logo_path)
 logo_photo = ImageTk.PhotoImage(logo_image)
 
+# Create Logo Button
+info_button = ttk.Button(window, image=logo_photo, width=10, style="Custom.TButton", \
+                         command=lambda: messagebox.showinfo("Info", "IMBD group 11 - Lavesores, Tabanas, Tilid"))
+info_button.grid(row=0, column=0, padx=(0), pady=10, columnspan=2)
+
 # Create the logo label
-logo_label = ttk.Label(window, image=logo_photo, background='#000000')
-logo_label.grid(row=0, column=0, padx=0, pady=10, columnspan=2)
+#logo_label = ttk.Label(window, image=logo_photo, background='#000000')
+#logo_label.grid(row=0, column=1, padx=(0,30), pady=10, columnspan=1)
+
+# Create Search Label
+search_button = tk.Button(window, text="Search", font=("Arial", 12), border=0, command=displayMovie)
+search_button.grid(row=0, column=2, padx=(0,0), pady=10)
+search_button.configure(background='black', foreground="white")
 
 # Create the search bar
 search_var = tk.StringVar()
 search_var.trace_add('write', updateSuggestions)  # Track changes in the search bar text
-search_entry = ttk.Entry(window, textvariable=search_var, width=80)
-search_entry.grid(row=0, column=2, padx=10, pady=10)
+search_entry = ttk.Entry(window, textvariable=search_var, width=70, font=("Arial ", 11), style="Search.TEntry")
+search_entry.grid(row=0, column=3, padx=(30,30), pady=10)
 search_entry.bind("<Return>", displayMovie)
 search_entry.bind("<FocusOut>", lambda event: suggestions_listbox.place_forget())
 
-suggestions_listbox = tk.Listbox(window, width=80, height=5)
+suggestions_listbox = tk.Listbox(window, width=95, height=5)
 suggestions_listbox.bind("<<ListboxSelect>>", lambda event: on_suggestion_select(event) if suggestions_listbox.curselection() else None)
-
-# Create the My List button
-info_button = ttk.Button(window, text="Info", width=25, \
-                         command=lambda: messagebox.showinfo("Info", "IMBD group 11 - Lavesores, Tabanas, Tilid"))
-info_button.grid(row=0, column=4, padx=(10,40), pady=10)
 
 # Create a Treeview widget to display the list of movies
 movies_frame = ttk.Frame(window)
@@ -370,7 +402,7 @@ movieTitle = "House of the Dragon"
 movieLanguage = "English (United States)"
 movieLength = "1h 47m"
 movieYear = "2022"
-movieRatings = '8.5'
+movieRatings = 8.5
 movieGenre = "Action | Adventure | Drama"
 movieSynopsis = "An internal succession war within House Targaryen at the height of its power, 172 years before the birth of Daenerys Targaryen."
 
@@ -386,7 +418,7 @@ currentMovieDirector = movieDirector
 #Movie Information
 # Canvas
 infoCanvas = tk.Canvas(window, width=770, height=600, bg='#28282D', highlightbackground='#28282D')
-infoCanvas.grid(row=1, column=2, padx=0, pady=(0,10), columnspan=1)
+infoCanvas.grid(row=1, column=2, padx=0, pady=(0,10), columnspan=2)
 
 # Create a frame to hold the contents of the canvas
 infoFrame = tk.Frame(infoCanvas, bg='#28282D')
@@ -434,7 +466,8 @@ infoCanvas.create_window(135, 100, anchor="w", window=yearValue)
 ratingsLabel = ttk.Label(infoCanvas, text="Ratings:", font=("Arial", 11))
 ratingsLabel.configure(background='#28282D', foreground="white")
 infoCanvas.create_window(10, 125, anchor="w", window=ratingsLabel)
-ratingsValue = ttk.Label(infoCanvas, text=movieRatings, font=("Arial", 11))
+stars = "\u2B50" * round(movieRatings)
+ratingsValue = ttk.Label(infoCanvas, text=f"{movieRatings} {stars}", font=("Arial", 11))
 ratingsValue.configure(background='#28282D', foreground="white")
 infoCanvas.create_window(135, 125, anchor="w", window=ratingsValue)
 # Movie Genre
