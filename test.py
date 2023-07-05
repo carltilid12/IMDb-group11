@@ -1,24 +1,19 @@
 import tkinter as tk
-from PIL import Image, ImageTk
+from tkinter import ttk
 
 # Create the main window
 window = tk.Tk()
-window.title("Movie Details")
-window.geometry("800x600")
+window.geometry("400x200")
 
-# Load the background image
-background_image = Image.open("assets\\bossBaby.png")
-background_image = background_image.resize((800, 600), Image.ANTIALIAS)  # Resize the image to fit the window
+# Create a ttk Style object
+style = ttk.Style()
+style.theme_use('classic')
+# Set the cursor color for the TEntry element
+style.configure("TEntry", insertbackground="red")  # Replace "red" with your desired color
 
-# Create a Tkinter PhotoImage from the PIL image
-background_photo = ImageTk.PhotoImage(background_image)
+# Create a ttk Entry widget
+entry = ttk.Entry(window)
+entry.pack(padx=20, pady=10)
 
-# Create a Canvas widget to display the background image
-canvas = tk.Canvas(window, width=800, height=600)
-canvas.pack()
-
-# Display the background image on the canvas
-canvas.create_image(0, 0, anchor=tk.NW, image=background_photo)
-
-# Run the Tkinter main loop
+# Start the Tkinter main loop
 window.mainloop()
