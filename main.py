@@ -284,7 +284,7 @@ def updateSuggestions(*args):
     if search_text and unique_movies:
         for movie in unique_movies:
             suggestions_listbox.insert(tk.END, movie)
-        suggestions_listbox.place(x=422, y=51)
+        suggestions_listbox.place(x=424, y=44)
         suggestions_listbox.lift()
     else:
         suggestions_listbox.place_forget()
@@ -319,6 +319,7 @@ def on_movie_select(event):
 
         # Set the movie title in the search entry
         search_var.set(movie_title)
+        suggestions_listbox.place_forget()
 
 def sort_tree():
     selected_option = sort_var.get()
@@ -387,6 +388,22 @@ def remove_movie_from_bookmarks(movie_id):
 
     conn.commit()
     conn.close()
+
+def display_bookmarked_movies():
+    # Clear the current content in the treeview
+    movie_tree.delete(*movie_tree.get_children())
+
+    # Retrieve the bookmarked movies from the database
+    conn = sqlite3.connect("imdb.db")
+    cursor = conn.cursor()
+    cursor.execute("SELECT movies.title FROM bookmarks LEFT JOIN movies ON bookmarks.movieID = movies.movieID")
+    bookmarked_movies = cursor.fetchall()
+    conn.close()
+
+    # Insert the bookmarked movies into the treeview
+    for movie in bookmarked_movies:
+        movie_title = movie[0]
+        movie_tree.insert("", "end", values=(movie_title,))
 ################################## MAIN #####################################
 
 # MAIN WINDOW
@@ -431,7 +448,8 @@ style.configure("Search.TEntry",
                 fieldbackground="#28282D",
                 insertcolor="#d7d7d2",
                 foreground="white")
-style.map("TCombobox", fieldbackground=[("readonly", "#28282D")])
+style.map("TCombobox", fieldbackground=[("readonly", "#28282D")],
+                selectbackground=[("readonly", "#28282D")])
 style.configure("TCombobox",
                 foreground="white",
                 background="black",
@@ -441,6 +459,16 @@ style.configure("TCombobox",
                 arrowsize=0,
                 relief="flat",
                 padding=5)
+style.map("Treeview",
+    background=[("selected", "#c3c3c3"), ("active", "#00FF00")],
+    foreground=[("selected", "#000000"), ("active", "#000000")],
+    font=[("selected", ("Arial", 10, "bold")), ("active", ("Arial", 10))],
+    fieldbackground=[("selected", "#CCCCCC"), ("active", "#EEEEEE")])
+style.configure("Treeview", 
+                font=("Arial", 8), 
+                foreground="white", 
+                background="#28282D",
+                fieldbackground="#28282D")
 
 ##### FIRST ROW ########
 
@@ -479,7 +507,7 @@ myList_path = "assets\\myList.png"  # Replace with the actual path to your logo 
 myList_image = Image.open(myList_path)
 myList_photo = ImageTk.PhotoImage(myList_image)
 myList_button = ttk.Button(window, image=myList_photo, width=10, style="Custom.TButton", \
-                         command=lambda: messagebox.showinfo("Info", "IMBD group 11 - Lavesores, Tabanas, Tilid"))
+                         command=display_bookmarked_movies)
 myList_button.grid(row=0, column=4, padx=(0), pady=10)
 
 # Sort Dropdown
@@ -499,10 +527,6 @@ movie_tree.pack(side=tk.LEFT, fill=tk.BOTH)
 movie_tree.heading("Movies", text="List of Movies", command=lambda c="Movies": sort_column(movie_tree, c))
 movie_tree.bind("<<TreeviewSelect>>", on_movie_select)
 
-# Configure font and color for Treeview
-style = ttk.Style()
-style.configure("Treeview", font=("Arial", 8), foreground="white", background="#28282D")
-
 # Populate the Treeview with movie data
 movies = getMovies()
 for movie in movies:
@@ -510,7 +534,6 @@ for movie in movies:
 movie_tree.bind("<Double-Button-1>", lambda event: (displayMovie() if movie_tree.focus() else None,
                                                     suggestions_listbox.place_forget()))
 sort_tree()
-
 
 #### MOVIE INFO ####
 
