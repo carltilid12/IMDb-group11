@@ -24,7 +24,8 @@ def displayMovie(event=None):
 
     if result:
         movieId = result[0]
-
+        global MovieID 
+        MovieID = movieId
         # Fetch the movie details using the movieId
         conn = sqlite3.connect("imdb.db")
         cursor = conn.cursor()
@@ -113,7 +114,12 @@ def displayMovie(event=None):
             coverImage = tk.PhotoImage(file="assets\\Null.png")
         coverCanvas.itemconfig(movieCover, image=coverImage)
         current_cover_image = coverImage
+        # Check if the movie is bookmarked
+        is_bookmarked = is_movie_bookmarked(movieId)
 
+        # Set the image for the bookmark button based on the bookmark status
+        bookmark_image = bookmarked_photo if is_bookmarked else bookmark_photo
+        bookmark_button.config(image=bookmark_image)
     else:
         # Display a pop-up warning if the movie title does not exist
         messagebox.showwarning("Movie Not Found", f"The movie '{search_text}' does not exist in the database.")
@@ -339,6 +345,48 @@ def sort_tree():
     for title in sorted_titles:
         movie_tree.insert("", "end", values=(title,))
 
+def toggleBookmark(movie_id):
+    # Check if the movie is already bookmarked
+    is_bookmarked = is_movie_bookmarked(movie_id)
+
+    if is_bookmarked:
+        # Movie is already bookmarked, so remove it from the bookmarks
+        bookmark_image = bookmark_photo
+        remove_movie_from_bookmarks(movie_id)
+        bookmark_button.config(image=bookmark_image)
+    else:
+        # Movie is not bookmarked, so add it to the bookmarks
+        bookmark_image = bookmarked_photo
+        add_movie_to_bookmarks(movie_id)
+        bookmark_button.config(image=bookmark_image)
+
+def is_movie_bookmarked(movie_id):
+    conn = sqlite3.connect("imdb.db")
+    cursor = conn.cursor()
+    cursor.execute("SELECT COUNT(*) FROM bookmarks WHERE movieID=?", (movie_id,))
+    count = cursor.fetchone()[0]
+    conn.close()
+    return count > 0
+
+def add_movie_to_bookmarks(movie_id):
+    conn = sqlite3.connect("imdb.db")
+    cursor = conn.cursor()
+
+    # Insert the movie ID into the bookmarks table
+    cursor.execute("INSERT INTO bookmarks (movieID) VALUES (?)", (movie_id,))
+
+    conn.commit()
+    conn.close()
+
+def remove_movie_from_bookmarks(movie_id):
+    conn = sqlite3.connect("imdb.db")
+    cursor = conn.cursor()
+
+    # Remove the movie ID from the bookmarks table
+    cursor.execute("DELETE FROM bookmarks WHERE movieID = ?", (movie_id,))
+
+    conn.commit()
+    conn.close()
 ################################## MAIN #####################################
 
 # MAIN WINDOW
@@ -403,7 +451,7 @@ logo_photo = ImageTk.PhotoImage(logo_image)
 
 # Create Logo Button
 info_button = ttk.Button(window, image=logo_photo, width=10, style="Custom.TButton", \
-                         command=lambda: messagebox.showinfo("Info", "IMBD group 11 - Lavesores, Tabanas, Tilid"))
+                         command=lambda: messagebox.showinfo("Info", ("IMBD group 11 - Lavesores, Tabanas, Tilid")))
 info_button.grid(row=0, column=0, padx=(0), pady=10, columnspan=2)
 
 # Create the logo label
@@ -426,7 +474,7 @@ search_entry.bind("<FocusOut>", lambda event: suggestions_listbox.place_forget()
 suggestions_listbox = tk.Listbox(window, width=95, height=5)
 suggestions_listbox.bind("<<ListboxSelect>>", lambda event: on_suggestion_select(event) if suggestions_listbox.curselection() else None)
 
-# Create MY List
+# Create My List
 myList_path = "assets\\myList.png"  # Replace with the actual path to your logo image file
 myList_image = Image.open(myList_path)
 myList_photo = ImageTk.PhotoImage(myList_image)
@@ -476,8 +524,19 @@ coverImage = tk.PhotoImage(file=movieCoverVar)
 movieCover = coverCanvas.create_image(135, 200, image=coverImage)
 currentCoverImage = coverImage
 
+MovieID = 1234567890
 # Bookmark Button
-
+bookmark_path = "assets\\bookmark.png"
+bookmarked_path = "assets\\bookmarked.png"
+bookmark_image = Image.open(bookmark_path)
+bookmarked_image = Image.open(bookmarked_path)
+bookmark_photo = ImageTk.PhotoImage(bookmark_image)
+bookmarked_photo = ImageTk.PhotoImage(bookmarked_image)
+is_bookmarked = is_movie_bookmarked(1234567890)
+initial_image = bookmarked_photo if is_bookmarked else bookmark_photo
+bookmark_button = ttk.Button(window, image=initial_image, width=10, style="Custom.TButton", \
+                         command=lambda: toggleBookmark(MovieID))
+bookmark_button.grid(row=1, column=0, padx=(0), pady=(225,0), columnspan=2)
 
 # Default Movie Details
 movieTitle = "House of the Dragon"
@@ -500,7 +559,7 @@ currentMovieDirector = movieDirector
 # Movie Information
 # Canvas
 infoCanvas = tk.Canvas(window, width=770, height=600, bg='#28282D', highlightbackground='#28282D')
-infoCanvas.grid(row=1, column=2, padx=0, pady=(0,10), columnspan=2, rowspan=3)
+infoCanvas.grid(row=1, column=2, padx=0, pady=(0,10), columnspan=2, rowspan=5)
 
 # Create a frame to hold the contents of the canvas
 infoFrame = tk.Frame(infoCanvas, bg='#28282D')
