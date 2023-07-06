@@ -1,19 +1,25 @@
-import tkinter as tk
+# Import the required libraries
+from tkinter import *
 from tkinter import ttk
 
-# Create the main window
-window = tk.Tk()
-window.geometry("400x200")
+# Create an instance of tkinter frame
+win = Tk()
 
-# Create a ttk Style object
-style = ttk.Style()
-style.theme_use('classic')
-# Set the cursor color for the TEntry element
-style.configure("TEntry", insertbackground="red")  # Replace "red" with your desired color
+# Set the size of the tkinter window
+win.geometry("700x350")
 
-# Create a ttk Entry widget
-entry = ttk.Entry(window)
-entry.pack(padx=20, pady=10)
+# Define the style for combobox widget
+style= ttk.Style()
+style.theme_use('clam')
+style.configure("TCombobox", fieldbackground= "orange", background= "white")
 
-# Start the Tkinter main loop
-window.mainloop()
+# Add a label widget
+label=ttk.Label(win, text= "Select a Car Model",
+font= ('Aerial 11'))
+label.pack(pady=30)
+# Add a Combobox widget
+cb= ttk.Combobox(win, width= 25, state="readonly" ,values=["Honda", "Hyundai", "Wolkswagon", "Tata", "Renault", "Ford", "Chrevolet", "Suzuki","BMW", "Mercedes"])
+
+cb.pack()
+
+win.mainloop()

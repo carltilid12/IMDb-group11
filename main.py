@@ -294,11 +294,15 @@ def on_suggestion_select(event):
     displayMovie()
 
 def sort_column(tree, column, reverse=False):
-    data = [(tree.set(child, column), child) for child in tree.get_children("")]
-    data.sort(reverse=reverse)
-    for index, (_, child) in enumerate(data):
+    children = tree.get_children("")
+    current_items = [(tree.set(child, column), child) for child in children]
+    # Reverse the existing sort order
+    current_items.reverse()
+    # Rearrange the items in the Treeview
+    for index, (_, child) in enumerate(current_items):
         tree.move(child, "", index)
-    tree.heading(column, command=lambda c=column: sort_column(tree, c, not reverse))
+    # Update the column heading to reflect the new sort order
+    tree.heading(column, command=lambda: sort_column(tree, column, not reverse))
 
 def on_movie_select(event):
     # Get the selected item from the Treeview
@@ -309,6 +313,31 @@ def on_movie_select(event):
 
         # Set the movie title in the search entry
         search_var.set(movie_title)
+
+def sort_tree():
+    selected_option = sort_var.get()
+    movies_info = getMoviesInfo()
+    movie_titles = []
+    if selected_option == "Ratings":
+        movie_titles = sorted(movies_info, key=lambda movie: float(movie[4]), reverse=True)
+    elif selected_option == "Year":
+        movie_titles = sorted(movies_info, key=lambda movie: int(movie[3]), reverse=True)
+    elif selected_option == "Title":
+        movie_titles = sorted(movies_info, key=lambda movie: movie[1])
+    elif selected_option == "Language":
+        movie_titles = sorted(movies_info, key=lambda movie: movie[2])
+    unique_titles = set()
+    sorted_titles = []
+    # Iterate over the sorted movie titles
+    for movie in movie_titles:
+        title = movie[1]
+        if title not in unique_titles:
+            sorted_titles.append(title)
+            unique_titles.add(title)
+    # Update the Treeview with the sorted movie titles
+    movie_tree.delete(*movie_tree.get_children())
+    for title in sorted_titles:
+        movie_tree.insert("", "end", values=(title,))
 
 ################################## MAIN #####################################
 
@@ -336,7 +365,7 @@ window.state('zoomed')      # Maximize the window
 ##### STYLES #######
 
 style = ttk.Style()
-style.theme_use('classic')
+style.theme_use('clam')
 style.configure("TButton", 
                 background="black", 
                 foreground="black",
@@ -354,6 +383,16 @@ style.configure("Search.TEntry",
                 fieldbackground="#28282D",
                 insertcolor="#d7d7d2",
                 foreground="white")
+style.map("TCombobox", fieldbackground=[("readonly", "#28282D")])
+style.configure("TCombobox",
+                foreground="white",
+                background="black",
+                selectbackground="#28282D",
+                selectforeground="white",
+                fieldbackground="#28282D",
+                arrowsize=0,
+                relief="flat",
+                padding=5)
 
 ##### FIRST ROW ########
 
@@ -387,6 +426,21 @@ search_entry.bind("<FocusOut>", lambda event: suggestions_listbox.place_forget()
 suggestions_listbox = tk.Listbox(window, width=95, height=5)
 suggestions_listbox.bind("<<ListboxSelect>>", lambda event: on_suggestion_select(event) if suggestions_listbox.curselection() else None)
 
+# Create MY List
+myList_path = "assets\\myList.png"  # Replace with the actual path to your logo image file
+myList_image = Image.open(myList_path)
+myList_photo = ImageTk.PhotoImage(myList_image)
+myList_button = ttk.Button(window, image=myList_photo, width=10, style="Custom.TButton", \
+                         command=lambda: messagebox.showinfo("Info", "IMBD group 11 - Lavesores, Tabanas, Tilid"))
+myList_button.grid(row=0, column=4, padx=(0), pady=10)
+
+# Sort Dropdown
+sort_var = tk.StringVar()
+sort_var.set("Title")
+sort_dropdown = ttk.Combobox(window, textvariable=sort_var, values=["Title", "Language", "Year", "Ratings"], state="readonly", style="TCombobox")
+sort_dropdown.grid(row=0, column=5, padx=(0,60), pady=10)
+sort_dropdown.bind("<<ComboboxSelected>>", lambda event: sort_tree())
+
 # Create a Treeview widget to display the list of movies
 movies_frame = ttk.Frame(window)
 movies_frame.grid(row=1, column=4, padx=(15, 70), pady=(15,25), rowspan=3, columnspan=2)
@@ -405,9 +459,9 @@ style.configure("Treeview", font=("Arial", 8), foreground="white", background="#
 movies = getMovies()
 for movie in movies:
     movie_tree.insert("", "end", values=(movie,))
-sort_column(movie_tree, "Movies")
 movie_tree.bind("<Double-Button-1>", lambda event: (displayMovie() if movie_tree.focus() else None,
                                                     suggestions_listbox.place_forget()))
+sort_tree()
 
 
 #### MOVIE INFO ####
@@ -439,7 +493,7 @@ movieActor = (("Matt Smith", "Prince Daemon Targaryen", "Matt Smith is an Englis
                 ("Olivia Cooke", "Queen Alicent Hightower", "Olivia Cooke was born and raised in Oldham, a former textile manufacturing town in Greater Manchester, North West England. She comes from a family of non-actors; her father, John, is a retired police officer, and her mother is a sales representative. Cooke attended Royton and Crompton Secondary School and studied drama at Oldham Sixth Form College, leaving before the end of her A-levels to star in Blackout."),\
                     )
 movieDirector = (("Ryan J. Condalv", "Ryan J. Condal is known for House of the Dragon (2022), Rampage (2018) and Colony (2016)."))
-movieProducer = "Warner Bros Studios Leavesden"
+movieProducer = "Warner Bros"
 currentMovieActor = movieActor
 currentMovieDirector = movieDirector
 
