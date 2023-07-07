@@ -34,24 +34,32 @@ def displayMovie(event=None):
         conn.close()
 
         # Extract the movie details from the fetched data
-        movieTitle = movie_details[1]
-        movieLanguage = movie_details[2]
-        movieLength_minutes = movie_details[3]
+        movieTitle = movie_details[1] if movie_details[1] is not None else "N/A"
+        movieLanguage = movie_details[2] if movie_details[2] is not None else "N/A"
+        movieLength_minutes = movie_details[3] if movie_details[3] is not None else 0
         format_movie_length = lambda minutes: f"{minutes // 60}h {minutes % 60}m"
         movieLength = format_movie_length(movieLength_minutes)
-        movieYear = movie_details[4]
-        movieSynopsis = movie_details[5]
-        movieRatings = movie_details[6]
+        movieYear = movie_details[4] if movie_details[4] is not None else "N/A"
+        movieSynopsis = movie_details[5] if movie_details[5] is not None else "N/A"
+        movieRatings = movie_details[6] if movie_details[4] is not None else 0.0
         movieCoverPath = movie_details[7]
 
         # Fetch the genres for the movie using the movieId
         conn = sqlite3.connect("imdb.db")
         cursor = conn.cursor()
         cursor.execute("SELECT genreName FROM genre WHERE movieId=?", (movieId,))
-        genres = cursor.fetchall()
+        rows = cursor.fetchall()
+        genres = []
+        for row in rows:
+            if row[0] is not None:
+                if isinstance(row[0], tuple):
+                    genre_name = "None"
+                else:
+                    genre_name = row
+                    genres.append(genre_name)
         cursor.execute("SELECT producerName FROM producers INNER JOIN produces ON producers.producerID = produces.producerID WHERE produces.movieID=?", (movieId,))
         producerDetails = cursor.fetchone()
-        movieProducer = producerDetails[0]
+        movieProducer = producerDetails[0] if producerDetails is not None else "N/A"
         conn.close()
         # Compile the genres into a list
         stars = "\u2B50" * round(movieRatings)
@@ -63,9 +71,15 @@ def displayMovie(event=None):
         conn = sqlite3.connect("imdb.db")
         cursor = conn.cursor()
         cursor.execute("SELECT actors.actorName, casts.character, actors.about FROM actors INNER JOIN casts ON actors.actorId = casts.actorId WHERE casts.movieID=?", (movieId,))
-        actors_data = cursor.fetchall()
+        rows = cursor.fetchall()
         conn.close()
-
+        actors_data = []
+        for row in rows:
+            actor_name = row[0] if row[0] is not None else "Unknown Actor"
+            character = row[1] if row[1] is not None else "Unknown Character"
+            about = row[2] if row[2] is not None else "No information available"
+            actor_data = [actor_name, character, about]
+            actors_data.append(actor_data)
         # Update
         titleValue.config(text=movieTitle)
         languageValue.config(text=movieLanguage)
@@ -93,7 +107,13 @@ def displayMovie(event=None):
         conn = sqlite3.connect("imdb.db")
         cursor = conn.cursor()
         cursor.execute("SELECT directorName, directorAbout FROM directors INNER JOIN directs ON directors.directorID = directs.directorID WHERE directs.movieID=?", (movieId,))
-        directors_data = cursor.fetchall()
+        rows = cursor.fetchall()
+        directors_data = []
+        for row in rows:
+            directorName = row[0] if row[0] is not None else "Unknown Director"
+            directorAbout = row[1] if row[1] is not None else "No information available"
+            director_data = [directorName, directorAbout]
+            directors_data.append(director_data)
         conn.close()
         for row in list(director_widgets_dict.keys()):
             delete_director_info(row)
@@ -270,7 +290,6 @@ def updateSuggestions(*args):
     search_text = search_var.get().lower()  # Convert search text to lowercase
     movies_info = getMoviesInfo()
 
-    # Use a set to store unique movie titles
     unique_movies = set()
 
     # Filter the movies based on the search text
@@ -284,20 +303,19 @@ def updateSuggestions(*args):
     if search_text and unique_movies:
         for movie in unique_movies:
             suggestions_listbox.insert(tk.END, movie)
-        suggestions_listbox.place(x=424, y=44)
+        suggestions_listbox.place(x=344, y=52)
         suggestions_listbox.lift()
     else:
         suggestions_listbox.place_forget()
-
-# Function to update the scrollable region of the canvas
-def update_canvas_scrollregion(event=None):
-    infoCanvas.configure(scrollregion=infoCanvas.bbox('all'))
 
 def on_suggestion_select(event):
     selected_movie = suggestions_listbox.get(suggestions_listbox.curselection())
     search_var.set(selected_movie)
     # Call the displayMovie function to show the selected movie details
     displayMovie()
+
+def update_canvas_scrollregion(event=None):
+    infoCanvas.configure(scrollregion=infoCanvas.bbox('all'))
 
 def sort_column(tree, column, reverse=False):
     children = tree.get_children("")
@@ -326,21 +344,24 @@ def sort_tree():
     movies_info = getMoviesInfo()
     movie_titles = []
     if selected_option == "Ratings":
-        movie_titles = sorted(movies_info, key=lambda movie: float(movie[4]), reverse=True)
+        movie_titles = sorted(movies_info, key=lambda movie: float(movie[4]) if movie[4] is not None else 0.0, reverse=True)
+        movie_titles = [movie[1] for movie in movie_titles if ((movie[1] is not None) and (movie[4] != 0.0))]
     elif selected_option == "Year":
-        movie_titles = sorted(movies_info, key=lambda movie: int(movie[3]), reverse=True)
+        movie_titles = sorted(movies_info, key=lambda movie: int(movie[3]) if movie[3] is not None else 0, reverse=True)
+        movie_titles = [movie[1] for movie in movie_titles if ((movie[1] is not None) and (movie[3] != 0))]
     elif selected_option == "Title":
-        movie_titles = sorted(movies_info, key=lambda movie: movie[1])
+        movie_titles = [movie[1] for movie in movies_info if movie[1] is not None]
+        movie_titles = sorted(movie_titles)
     elif selected_option == "Language":
-        movie_titles = sorted(movies_info, key=lambda movie: movie[2])
+        movie_titles = sorted(movies_info, key=lambda movie: movie[2] if movie[2] is not None else "")
+        movie_titles = [movie[1] for movie in movie_titles if ((movie[1] is not None) and (movie[2] is not None))]
     unique_titles = set()
     sorted_titles = []
     # Iterate over the sorted movie titles
     for movie in movie_titles:
-        title = movie[1]
-        if title not in unique_titles:
-            sorted_titles.append(title)
-            unique_titles.add(title)
+        if movie not in unique_titles:
+            sorted_titles.append(movie)
+            unique_titles.add(movie)
     # Update the Treeview with the sorted movie titles
     movie_tree.delete(*movie_tree.get_children())
     for title in sorted_titles:
@@ -404,12 +425,30 @@ def display_bookmarked_movies():
     for movie in bookmarked_movies:
         movie_title = movie[0]
         movie_tree.insert("", "end", values=(movie_title,))
+
+def toggle_my_list():
+    global my_list_toggle
+
+    if my_list_toggle:
+        # Display the sorted movies
+        sort_tree()
+        my_list_toggle = False
+    else:
+        # Display the bookmarked movies
+        display_bookmarked_movies()
+        my_list_toggle = True
+
+def autofillSearchEntry(event=None):
+    selected_suggestion = suggestions_listbox.get(0)  # Get the first suggested result
+    if selected_suggestion:
+        search_var.set(selected_suggestion)  # Set the search entry text to the selected suggestion
+
 ################################## MAIN #####################################
 
 # MAIN WINDOW
 window = tk.Tk()
 window.title("IMDb")
-window.configure(bg='#000000')
+window.configure(bg='#181818')
 
 # Get the screen width and height
 screen_width = window.winfo_screenwidth()
@@ -440,13 +479,16 @@ style.configure("TButton",
                 relief="flat")
 style.map("TButton", background=[("active", "#28282D")])
 style.configure("Search.TEntry", 
-                padding = 5,
-                highlightcolor="#28282D",
+                padding = 8,
+                highlightcolor="",
                 relief="flat",
                 selectbackground="white",
                 selectforeground="black", 
                 fieldbackground="#28282D",
                 insertcolor="#d7d7d2",
+                highlightbackground="",
+                borderwidth=0,
+                bordercolor="black",
                 foreground="white")
 style.map("TCombobox", fieldbackground=[("readonly", "#28282D")],
                 selectbackground=[("readonly", "#28282D")])
@@ -469,6 +511,13 @@ style.configure("Treeview",
                 foreground="white", 
                 background="#28282D",
                 fieldbackground="#28282D")
+style.map("TScrollbar",
+          background=[("active", "gray"), ("!active", "#28282D")],
+          arrowcolor=[("active", "white"), ("!active", "black")])
+style.configure("TScrollbar",
+                background="#CCCCCC",
+                padding=10,
+                width=12)
 
 ##### FIRST ROW ########
 
@@ -476,38 +525,41 @@ style.configure("Treeview",
 logo_path = "assets\IMDB_Logo_2016 1.png"  # Replace with the actual path to your logo image file
 logo_image = Image.open(logo_path)
 logo_photo = ImageTk.PhotoImage(logo_image)
-
-# Create Logo Button
-info_button = ttk.Button(window, image=logo_photo, width=10, style="Custom.TButton", \
+info_button = ttk.Button(window, image=logo_photo, width=10, style="TButton", \
                          command=lambda: messagebox.showinfo("Info", ("IMBD group 11 - Lavesores, Tabanas, Tilid")))
-info_button.grid(row=0, column=0, padx=(0), pady=10, columnspan=2)
+info_button.grid(row=0, column=0, padx=(0), pady=15, columnspan=2)
 
 # Create the logo label
 #logo_label = ttk.Label(window, image=logo_photo, background='#000000')
 #logo_label.grid(row=0, column=1, padx=(0,30), pady=10, columnspan=1)
 
-# Create Search Label
-search_button = tk.Button(window, text="Search", font=("Arial", 12), border=0, command=displayMovie)
-search_button.grid(row=0, column=2, padx=(0,0), pady=10)
-search_button.configure(background='black', foreground="white")
-
 # Create the search bar
 search_var = tk.StringVar()
 search_var.trace_add('write', updateSuggestions)  # Track changes in the search bar text
 search_entry = ttk.Entry(window, textvariable=search_var, width=70, font=("Arial ", 11), style="Search.TEntry")
-search_entry.grid(row=0, column=3, padx=(30,30), pady=10)
-search_entry.bind("<Return>", displayMovie)
+search_entry.grid(row=0, column=2, padx=(40,0), pady=10)
+search_entry.bind("<Return>", lambda event: (displayMovie(), suggestions_listbox.lift()))
 search_entry.bind("<FocusOut>", lambda event: suggestions_listbox.place_forget())
+search_entry.bind("<Tab>", lambda event: (autofillSearchEntry(), displayMovie()))
 
-suggestions_listbox = tk.Listbox(window, width=95, height=5)
+suggestions_listbox = tk.Listbox(window, width=96, height=5)
 suggestions_listbox.bind("<<ListboxSelect>>", lambda event: on_suggestion_select(event) if suggestions_listbox.curselection() else None)
+
+# Create Search Label
+search_path = "assets\\search.png"  # Replace with the actual path to your logo image file
+search_image = Image.open(search_path)
+search_photo = ImageTk.PhotoImage(search_image)
+search_button = tk.Button(window, image=search_photo, font=("Arial", 12), border=0, command=displayMovie)
+search_button.grid(row=0, column=3, padx=(0,40), pady=10)
+search_button.configure(background='black', foreground="white")
 
 # Create My List
 myList_path = "assets\\myList.png"  # Replace with the actual path to your logo image file
 myList_image = Image.open(myList_path)
 myList_photo = ImageTk.PhotoImage(myList_image)
-myList_button = ttk.Button(window, image=myList_photo, width=10, style="Custom.TButton", \
-                         command=display_bookmarked_movies)
+my_list_toggle = False
+myList_button = ttk.Button(window, image=myList_photo, width=10, style="TButton", \
+                         command=toggle_my_list)
 myList_button.grid(row=0, column=4, padx=(0), pady=10)
 
 # Sort Dropdown
@@ -517,9 +569,14 @@ sort_dropdown = ttk.Combobox(window, textvariable=sort_var, values=["Title", "La
 sort_dropdown.grid(row=0, column=5, padx=(0,60), pady=10)
 sort_dropdown.bind("<<ComboboxSelected>>", lambda event: sort_tree())
 
+# Row 1 Background
+row1 = tk.Frame(window, bg="black")
+row1.grid(row=0, column=0, sticky="nsew", columnspan=6)
+row1.lower()
+
 # Create a Treeview widget to display the list of movies
 movies_frame = ttk.Frame(window)
-movies_frame.grid(row=1, column=4, padx=(15, 70), pady=(15,25), rowspan=3, columnspan=2)
+movies_frame.grid(row=1, column=4, padx=(5, 70), pady=(15,25), rowspan=5, columnspan=2)
 movie_tree = ttk.Treeview(movies_frame, columns=("Movies"), show="headings", height=29)
 movie_tree.heading("Movies", text="Title", anchor='w')
 movie_tree.column("Movies", anchor='w', width=260)
@@ -538,8 +595,8 @@ sort_tree()
 #### MOVIE INFO ####
 
 #Movie Cover
-coverCanvas = tk.Canvas(window, width=270, height=400, bg='black', highlightbackground='#000000')
-coverCanvas.grid(row=1, column=0, padx=0, pady=(15, 230), columnspan=2)
+coverCanvas = tk.Canvas(window, width=270, height=440, bg='#232323', highlightbackground='#232323')
+coverCanvas.grid(row=1, column=0, padx=15, pady=(20, 20), rowspan=2, columnspan=2)
 
 movieCoverPath = "assets\\houseOfDragon.png"
 movieCoverVar = (movieCoverPath)
@@ -557,9 +614,11 @@ bookmark_photo = ImageTk.PhotoImage(bookmark_image)
 bookmarked_photo = ImageTk.PhotoImage(bookmarked_image)
 is_bookmarked = is_movie_bookmarked(1234567890)
 initial_image = bookmarked_photo if is_bookmarked else bookmark_photo
+style.configure("Custom.TButton", background="#232323", foreground="#232323",highlightcolor="#232323",
+                padding=1, borderwidth=0, relief="flat")
 bookmark_button = ttk.Button(window, image=initial_image, width=10, style="Custom.TButton", \
                          command=lambda: toggleBookmark(MovieID))
-bookmark_button.grid(row=1, column=0, padx=(0), pady=(225,0), columnspan=2)
+bookmark_button.grid(row=2, column=0, padx=(0), pady=(320,0), columnspan=2)
 
 # Default Movie Details
 movieTitle = "House of the Dragon"
@@ -581,7 +640,7 @@ currentMovieDirector = movieDirector
 
 # Movie Information
 # Canvas
-infoCanvas = tk.Canvas(window, width=770, height=600, bg='#28282D', highlightbackground='#28282D')
+infoCanvas = tk.Canvas(window, width=750, height=600, bg='#28282D', highlightbackground='#28282D')
 infoCanvas.grid(row=1, column=2, padx=0, pady=(0,10), columnspan=2, rowspan=5)
 
 # Create a frame to hold the contents of the canvas
@@ -589,7 +648,7 @@ infoFrame = tk.Frame(infoCanvas, bg='#28282D')
 infoCanvas.create_window(0, 0, anchor='nw', window=infoFrame)
 
 # Configure the scrollbar
-scrollbar = tk.Scrollbar(window, orient='vertical', command=infoCanvas.yview)
+scrollbar = ttk.Scrollbar(window, orient='vertical', command=infoCanvas.yview)
 scrollbar.place(relx=1.0, rely=0, relheight=1.0, anchor='ne')
 infoCanvas.configure(yscrollcommand=scrollbar.set)
 infoCanvas.bind("<Enter>", lambda event: infoCanvas.bind_all('<MouseWheel>', lambda e:
