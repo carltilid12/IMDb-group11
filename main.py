@@ -450,6 +450,13 @@ def create_movie():
     dialog = tk.Toplevel(window)
     dialog.title("Create Movie")
     dialog.configure(background="#28282D")
+    screen_width = dialog.winfo_screenwidth()
+    screen_height = dialog.winfo_screenheight()
+    dialog_width = 450
+    dialog_height = 325
+    x = (screen_width - dialog_width) // 2
+    y = (screen_height - dialog_height) // 2
+    dialog.geometry(f"{dialog_width}x{dialog_height}+{x}+{y}")
 
     # Create labels and entry fields for the movie attributes
     labels = ["Movie ID:", "Title:", "Language:", "Length:", "Year:", "Ratings:", "Genre:", "Synopsis:", "Movie Cover:"]
@@ -458,7 +465,7 @@ def create_movie():
         label = ttk.Label(dialog, text=label_text, background='#28282D', foreground="white", font=("Arial ", 11))
         label.grid(row=i, column=0, padx=5, pady=5)
 
-        entry = ttk.Entry(dialog, width=50)
+        entry = ttk.Entry(dialog, width=55)
         entry.grid(row=i, column=1, padx=5, pady=5)
         entries.append(entry)
 
@@ -498,11 +505,12 @@ def create_movie():
                        (movie_id, title, language, length, year, synopsis, ratings, movie_cover))
             for genre in genres:
                 cursor.execute("INSERT INTO genre (movieID, genreName) VALUES (?, ?)", (movie_id, genre))
-            search_var.set(title)
-            displayMovie()
             # Commit the values and close the dialog window and the connection
             conn.commit()
             conn.close()
+            search_var.set(title)
+            displayMovie()
+            sort_tree()
             dialog.destroy()
         except ValueError:
             # Catch ValueError if there are any input value conversion errors
@@ -518,6 +526,13 @@ def update_movie():
     dialog = tk.Toplevel(window)
     dialog.title("Update Movie")
     dialog.configure(background="#28282D")
+    screen_width = dialog.winfo_screenwidth()
+    screen_height = dialog.winfo_screenheight()
+    dialog_width = 450
+    dialog_height = 325
+    x = (screen_width - dialog_width) // 2
+    y = (screen_height - dialog_height) // 2
+    dialog.geometry(f"{dialog_width}x{dialog_height}+{x}+{y}")
 
     # Retrieve the movie details based on the global variable movieID
     conn = sqlite3.connect("imdb.db")
@@ -535,7 +550,7 @@ def update_movie():
         label = ttk.Label(dialog, text=label_text, background='#28282D', foreground="white", font=("Arial ", 11))
         label.grid(row=i, column=0, padx=5, pady=5)
 
-        entry = ttk.Entry(dialog, width=50)
+        entry = ttk.Entry(dialog, width=55)
         entry.grid(row=i, column=1, padx=5, pady=5)
         entries.append(entry)
 
@@ -579,11 +594,12 @@ def update_movie():
             cursor.execute("DELETE FROM genre WHERE movieID=?", (movieID,))
             for genre in genres:
                 cursor.execute("INSERT INTO genre (movieID, genreName) VALUES (?, ?)", (movieID, genre))
-            search_var.set(title)
-            displayMovie()
             # Commit the values and close the dialog window and the connection
             conn.commit()
             conn.close()
+            search_var.set(title)
+            displayMovie()
+            sort_tree()
             dialog.destroy()
         except ValueError:
             # Catch ValueError if there are any input value conversion errors
@@ -616,6 +632,7 @@ def delete_movie():
             movie_title = movies_list[0]
             search_var.set(movie_title)
             displayMovie() if movies_list else None
+            sort_tree()
         except Exception as e:
             messagebox.showerror("Error", "An error occurred while deleting the movie:\n" + str(e))
     else:
