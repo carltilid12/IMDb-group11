@@ -286,8 +286,8 @@ def delete_director_info(row):
         del director_widgets_dict[row]
 
         # Update the canvas size to fit the remaining directors
-        canvas_height = 400 + len(director_widgets_dict) * 150 + len(actor_widgets_dict)*150 + 75
-        infoCanvas.config(scrollregion=(0, 0, 300, canvas_height))
+        #canvas_height = 400 + len(director_widgets_dict) * 150 + len(actor_widgets_dict)*150 + 75
+        #infoCanvas.config(scrollregion=(0, 0, 300, canvas_height))
 
 def updateSuggestions(*args):
     # Get the text entered in the search bar
@@ -619,7 +619,7 @@ def delete_movie():
             cursor = conn.cursor()
             cursor.execute("DELETE FROM genre WHERE movieID=?", (movie_id,))
             #cursor.execute("DELETE FROM directs WHERE movieID=?", (movie_id,))
-            #cursor.execute("DELETE FROM casts WHERE movieID=?", (movie_id,))
+            cursor.execute("DELETE FROM casts WHERE movieID=?", (movie_id,))
             #cursor.execute("DELETE FROM produces WHERE movieID=?", (movie_id,))
             cursor.execute("DELETE FROM movies WHERE movieID=?", (movie_id,))
 
@@ -697,10 +697,247 @@ def display_movie():
     tree["show"] = "headings"
 
 def create_actor():
-    print("Performing Create action for Actors")
+    dialog = tk.Toplevel(window)
+    dialog.title("Create Actor")
+    dialog.configure(background="#28282D")
+
+    # Create labels and entry fields for actor information
+    actor_labels = ["Actor ID:", "Actor Name:", "About:"]
+    actor_entries = []
+    for i, label_text in enumerate(actor_labels):
+        label = ttk.Label(dialog, text=label_text, background="#28282D", foreground="white", font=("Arial", 11))
+        label.grid(row=i, column=0, padx=5, pady=5)
+
+        entry = ttk.Entry(dialog, width=50)
+        entry.grid(row=i, column=1, padx=5, pady=5)
+        actor_entries.append(entry)
+
+    # Create labels and entry fields for cast information
+    cast_labels = ["Movie ID:", "Character:"]
+    cast_entries = []
+    for i, label_text in enumerate(cast_labels):
+        label = ttk.Label(dialog, text=label_text, background="#28282D", foreground="white", font=("Arial", 11))
+        label.grid(row=i + len(actor_labels), column=0, padx=5, pady=5)
+
+        entry = ttk.Entry(dialog, width=50)
+        entry.grid(row=i + len(actor_labels), column=1, padx=5, pady=5)
+        cast_entries.append(entry)
+
+    def save_actor():
+        try:
+            conn = sqlite3.connect("imdb.db")
+            cursor = conn.cursor()
+            # Retrieve actor information from entry fields
+            actor_id = actor_entries[0].get()
+            actor_name = actor_entries[1].get()
+            about = actor_entries[2].get()
+
+            # Retrieve cast information from entry fields
+            movie_id = cast_entries[0].get()
+            character = cast_entries[1].get()
+
+            if any(value is None or value == "" for value in [actor_name, about]):
+                raise ValueError("Missing values in the entry")
+
+            actor_id = int(actor_id)
+
+            if (movie_id != "" and character == "") or (movie_id == "" and character != ""):
+                conn.close()
+                raise ValueError("Both Movie ID and Character must be filled or empty")
+            elif (movie_id != "" and character != ""):
+                movie_id = int(movie_id)
+                # Check if the actor ID is already casted in the movie ID
+                cursor.execute("SELECT COUNT(*) FROM casts WHERE movieID=? AND actorID=?", (movie_id, actor_id))
+                count = cursor.fetchone()[0]
+                if count > 0:
+                    conn.close()
+                    raise ValueError("Actor ID is already casted in the movie")
+                
+                cursor.execute("SELECT COUNT(*) FROM actors WHERE actorID=?", (actor_id,))
+                count = cursor.fetchone()[0]
+                if count > 0:
+                    # Actor ID already exists, prompt user for confirmation
+                    result = messagebox.askquestion("Actor ID Exists", "Actor ID already exists. Do you want to proceed with the existing actor information?")
+                    if result == "yes":
+                        # Retrieve existing actorName and about from the actors table
+                        cursor.execute("SELECT actorName, about FROM actors WHERE actorID=?", (actor_id,))
+                        row = cursor.fetchone()
+                        actor_name = row[0]
+                        about = row[1]
+                    else:
+                        conn.close()
+                        raise ValueError("Invalid Input: Actor ID already exists")
+                else:
+                    cursor.execute("INSERT INTO actors (actorID, actorName, about) VALUES (?, ?, ?)", (actor_id, actor_name, about))
+                cursor.execute("INSERT INTO casts (movieID, actorID, character) VALUES (?, ?, ?)", (movie_id, actor_id, character))
+            elif (movie_id == "" and character == ""):
+                cursor.execute("SELECT COUNT(*) FROM actors WHERE actorID=?", (actor_id,))
+                count = cursor.fetchone()[0]
+                if count > 0:
+                    conn.close()
+                    raise ValueError("Invalid Input: Actor ID already exists")
+                else:
+                    cursor.execute("INSERT INTO actors (actorID, actorName, about) VALUES (?, ?, ?)", (actor_id, actor_name, about))
+        
+            conn.commit()
+            messagebox.showinfo("Success", "Actor information added successfully")
+            if movie_id != "":
+                search_var.set(movie_id) 
+                displayMovie() 
+
+            # Close the database connection and the dialog window
+            conn.close()
+            dialog.destroy()
+        except ValueError as e:
+            messagebox.showwarning("Invalid Input", str(e))
+            dialog.focus_force()
+
+    # Create a button to save the actor and cast information
+    save_button = tk.Button(dialog, text="Save", command=save_actor)
+    save_button.grid(row=len(actor_labels) + len(cast_labels), columnspan=2, padx=5, pady=10)
 
 def update_actor():
-    print("Performing Update action for Actors")
+    actor_id = simpledialog.askinteger("Actor ID", "Enter Actor ID:")
+    if actor_id is None:
+        return  # User cancelled, exit the function
+    while True:
+        # Check if actor ID exists in actors table
+        conn = sqlite3.connect("imdb.db")
+        cursor = conn.cursor()
+        cursor.execute("SELECT COUNT(*) FROM actors WHERE actorID=?", (actor_id,))
+        count = cursor.fetchone()[0]
+        if count == 0:
+            messagebox.showwarning("Invalid Input", "Actor ID does not exist")
+            actor_id = simpledialog.askinteger("Actor ID", "Enter Actor ID:")
+            if actor_id is None:
+                conn.close()
+                return  # User cancelled, exit the function
+        else:
+            break
+
+    dialog = tk.Toplevel(window)
+    dialog.title("Update Actor")
+    dialog.configure(background="#28282D")
+
+    # Create labels and entry fields for actor information
+    actor_labels = ["Actor Name:", "About:"]
+    actor_entries = []
+    for i, label_text in enumerate(actor_labels):
+        label = ttk.Label(dialog, text=label_text, background="#28282D", foreground="white", font=("Arial", 11))
+        label.grid(row=i, column=0, padx=5, pady=5)
+
+        entry = ttk.Entry(dialog, width=50)
+        entry.grid(row=i, column=1, padx=5, pady=5)
+        actor_entries.append(entry)
+
+    # Retrieve existing actor and cast information
+    cursor.execute("SELECT actorName, about FROM actors WHERE actorID=?", (actor_id,))
+    row = cursor.fetchone()
+    existing_actor_name = row[0]
+    existing_about = row[1]
+
+    # Fill entry fields with existing actor information
+    actor_entries[0].insert(0, existing_actor_name)
+    actor_entries[1].insert(0, existing_about)
+
+    # Create labels and dropdown menu for movie selection
+    movie_label = ttk.Label(dialog, text="Movie:", background="#28282D", foreground="white", font=("Arial", 11))
+    movie_label.grid(row=len(actor_labels), column=0, padx=5, pady=5)
+
+    # Retrieve existing cast information for the actor
+    cursor.execute("SELECT movieID, character FROM casts WHERE actorID=?", (actor_id,))
+    cast_rows = cursor.fetchall()
+
+    # Create a dropdown for selecting movie ID
+    movie_ids = [cast_row[0] for cast_row in cast_rows]
+    movie_id_var = tk.StringVar()
+    movie_id_dropdown = ttk.Combobox(dialog, textvariable=movie_id_var, values=movie_ids)
+    movie_id_dropdown.grid(row=len(actor_labels), column=1, padx=5, pady=5)
+    if movie_ids:
+        movie_id_dropdown.set(movie_ids[0])
+
+    # Create labels and entry fields for cast character
+    cast_character_label = ttk.Label(dialog, text="Character:", background="#28282D", foreground="white", font=("Arial", 11))
+    cast_character_label.grid(row=len(actor_labels) + 1, column=0, padx=5, pady=5)
+
+    cast_character_entry = ttk.Entry(dialog, width=50)
+    cast_character_entry.grid(row=len(actor_labels) + 1, column=1, padx=5, pady=5)
+
+    # Function to automatically fill character entry based on selected movie ID
+    def select_movie_id(*args):
+        selected_movie_id = movie_id_dropdown.get()
+        for cast_row in cast_rows:
+            if int(cast_row[0]) == int(selected_movie_id):
+                character = cast_row[1]
+                cast_character_entry.delete(0, tk.END)
+                cast_character_entry.insert(0, character)
+                break
+    movie_id_dropdown.bind("<<ComboboxSelected>>", select_movie_id)
+
+    def save_actor():
+        try:
+            conn = sqlite3.connect("imdb.db")
+            cursor = conn.cursor()
+            # Retrieve updated actor information from entry fields
+            actor_name = actor_entries[0].get()
+            about = actor_entries[1].get()
+
+            # Retrieve selected movie ID and cast character
+            selected_movie_id = movie_id_dropdown.get()
+            character = cast_character_entry.get()
+
+            if any(value is None or value == "" for value in [actor_name, about]):
+                raise ValueError("Missing values in the entry")
+            else:
+                if selected_movie_id == "" and character == "":
+                    # Update actor information in the actors table
+                    cursor.execute("UPDATE actors SET actorName=?, about=? WHERE actorID=?", (actor_name, about, actor_id))
+                elif selected_movie_id != "" and character != "":
+                    # Check if the selected movie ID is a valid integer
+                    try:
+                        selected_movie_id = int(selected_movie_id)
+                    except ValueError:
+                        raise ValueError("Invalid movie ID")
+
+                    # Check if the movie ID exists in the movies table
+                    cursor.execute("SELECT COUNT(*) FROM movies WHERE movieID=?", (selected_movie_id,))
+                    count = cursor.fetchone()[0]
+                    if count == 0:
+                        conn.close()
+                        raise ValueError("Movie ID does not exist")
+
+                    # Check if the actor ID is already casted in the movie ID
+                    cursor.execute("SELECT COUNT(*) FROM casts WHERE movieID=? AND actorID=?", (selected_movie_id, actor_id))
+                    count = cursor.fetchone()[0]
+                    if count == 0:
+                        # Insert cast information in the casts table
+                        cursor.execute("INSERT INTO casts (movieID, actorID, character) VALUES (?, ?, ?)", (selected_movie_id, actor_id, character))
+                    else:
+                        # Update cast information in the casts table
+                        cursor.execute("UPDATE casts SET movieID=?, character=? WHERE actorID=?", (selected_movie_id, character, actor_id))
+                    cursor.execute("UPDATE actors SET actorName=?, about=? WHERE actorID=?", (actor_name, about, actor_id))                    
+                else:
+                    raise ValueError("Both movie ID and character must be either filled or empty")
+
+            conn.commit()
+            messagebox.showinfo("Success", "Actor information updated successfully")
+            if selected_movie_id != "":
+                search_var.set(selected_movie_id) 
+                displayMovie() 
+
+            # Close the database connection and destroy the dialog
+            conn.close()
+            dialog.destroy()
+        except ValueError as e:
+            conn.close()
+            messagebox.showwarning("Invalid Input", str(e))
+            dialog.focus_force()
+
+
+    save_button = tk.Button(dialog, text="Save", command=save_actor)
+    save_button.grid(row=len(actor_labels) + 2, columnspan=2, padx=5, pady=10)
+    conn.close()
+
 
 def delete_actor():
     print("Performing Delete action for Actors")
