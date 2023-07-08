@@ -10,6 +10,7 @@ import os
 # Function to Display the ssearched movie with all the information
 def displayMovie(event=None):
     # Get the movie title entered in the search bar
+    suggestions_listbox.place_forget()
     search_text = search_var.get()
 
     # Fetch the movieId of the entered movie title
@@ -269,6 +270,9 @@ def create_director_info(director_data, row):
     director_frame.grid_columnconfigure(0, weight=1)
     director_value.grid(row=0, column=0, padx=5, pady=5, sticky="w")
     director_value_info.grid(row=1, column=0, padx=5, pady=5, sticky="w")
+    canvas_height = 250 + len(director_widgets_dict) * 150 + len(actor_widgets_dict)*150 + 75
+    infoCanvas.config(scrollregion=(0, 0, 300, canvas_height))
+
 
 def delete_director_info(row):
     if row in director_widgets_dict:
@@ -393,20 +397,18 @@ def is_movie_bookmarked(movie_id):
 def add_movie_to_bookmarks(movie_id):
     conn = sqlite3.connect("imdb.db")
     cursor = conn.cursor()
-
     # Insert the movie ID into the bookmarks table
     cursor.execute("INSERT INTO bookmarks (movieID) VALUES (?)", (movie_id,))
-
+    
     conn.commit()
     conn.close()
 
 def remove_movie_from_bookmarks(movie_id):
     conn = sqlite3.connect("imdb.db")
     cursor = conn.cursor()
-
     # Remove the movie ID from the bookmarks table
     cursor.execute("DELETE FROM bookmarks WHERE movieID = ?", (movie_id,))
-
+    
     conn.commit()
     conn.close()
 
@@ -443,6 +445,216 @@ def autofillSearchEntry(event=None):
     if selected_suggestion:
         search_var.set(selected_suggestion)  # Set the search entry text to the selected suggestion
 
+# CRUDL FUNCTIONS
+def create_movie():
+    dialog = tk.Toplevel(window)
+    dialog.title("Create Movie")
+    dialog.configure(background="#28282D")
+
+    # Create labels and entry fields for the movie attributes
+    labels = ["Movie ID:", "Title:", "Language:", "Length:", "Year:", "Ratings:", "Genre:", "Synopsis:", "Movie Cover:"]
+    entries = []
+    for i, label_text in enumerate(labels):
+        label = ttk.Label(dialog, text=label_text, background='#28282D', foreground="white", font=("Arial ", 11))
+        label.grid(row=i, column=0, padx=5, pady=5)
+
+        entry = ttk.Entry(dialog, width=50)
+        entry.grid(row=i, column=1, padx=5, pady=5)
+        entries.append(entry)
+
+    def save_movie():
+        try:
+            conn = sqlite3.connect("imdb.db")
+            cursor = conn.cursor()
+            # Retrieve the values from the entry fields
+            movie_id = int(entries[0].get())
+            cursor.execute("SELECT COUNT(*) FROM movies WHERE movieID=?", (movie_id,))
+            count = cursor.fetchone()[0]
+            if count > 0:
+                messagebox.showwarning("Invalid Input", "Movie ID already exists.")
+                dialog.focus_force()
+                conn.close()
+                return
+            
+            title = entries[1].get()
+            language = entries[2].get()
+            length = entries[3].get()
+            year = entries[4].get()
+            ratings = entries[5].get()
+            genre_input = entries[6].get()
+            synopsis = entries[7].get()
+            movie_cover = entries[8].get()
+
+            if any(value is None or value == "" for value in [title, language, length, year, ratings, genre_input, synopsis, movie_cover]):
+                raise ValueError("Invalid input")
+            
+            length = int(length)
+            year = int(year)
+            ratings = float(ratings)
+            genres = [genre.strip() for genre in genre_input.split(',')]
+
+            cursor.execute("INSERT INTO movies (movieID, title, language, length, year, synopsis, ratings, movieCover) \
+                           VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
+                       (movie_id, title, language, length, year, synopsis, ratings, movie_cover))
+            for genre in genres:
+                cursor.execute("INSERT INTO genre (movieID, genreName) VALUES (?, ?)", (movie_id, genre))
+            search_var.set(title)
+            displayMovie()
+            # Commit the values and close the dialog window and the connection
+            conn.commit()
+            conn.close()
+            dialog.destroy()
+        except ValueError:
+            # Catch ValueError if there are any input value conversion errors
+            messagebox.showwarning("Invalid Input", "Please enter valid values for movie ID, length, year, and ratings.")
+            dialog.focus_force()
+
+    save_button = tk.Button(dialog, text="Save", command=save_movie)
+    save_button.grid(row=len(labels), columnspan=2, padx=5, pady=10)
+
+def update_movie():
+    global MovieID
+    movieID = MovieID
+    dialog = tk.Toplevel(window)
+    dialog.title("Update Movie")
+    dialog.configure(background="#28282D")
+
+    # Retrieve the movie details based on the global variable movieID
+    conn = sqlite3.connect("imdb.db")
+    cursor = conn.cursor()
+    cursor.execute("SELECT * FROM movies WHERE movieID=?", (movieID,))
+    movie = cursor.fetchone()
+    cursor.execute("SELECT genreName FROM genre WHERE movieID=?", (movieID,))
+    genres = [genre[0] for genre in cursor.fetchall()]
+    conn.close()
+
+    # Create labels and entry fields for the movie attributes
+    labels = ["Title:", "Language:", "Length:", "Year:", "Ratings:", "Genre:", "Synopsis:", "Movie Cover:"]
+    entries = []
+    for i, label_text in enumerate(labels):
+        label = ttk.Label(dialog, text=label_text, background='#28282D', foreground="white", font=("Arial ", 11))
+        label.grid(row=i, column=0, padx=5, pady=5)
+
+        entry = ttk.Entry(dialog, width=50)
+        entry.grid(row=i, column=1, padx=5, pady=5)
+        entries.append(entry)
+
+    # Set the initial values in the entry fields
+    entries[0].insert(0, movie[1]) 
+    entries[1].insert(0, movie[2])
+    entries[2].insert(0, str(movie[3]))
+    entries[3].insert(0, str(movie[4]))
+    entries[5].insert(0, ", ".join(genres))
+    entries[4].insert(0, str(movie[6]))
+    entries[6].insert(0, movie[5])
+    entries[7].insert(0, movie[7])
+
+    def save_movie():
+        try:
+            conn = sqlite3.connect("imdb.db")
+            cursor = conn.cursor()
+
+            # Retrieve the updated values from the entry fields
+            title = entries[0].get()
+            language = entries[1].get()
+            length = entries[2].get()
+            year = entries[3].get()
+            ratings = entries[4].get()
+            genre_input = entries[5].get()
+            synopsis = entries[6].get()
+            movie_cover = entries[7].get()
+
+            if any(value is None or value == "" for value in [title, language, length, year, ratings, genre_input, synopsis, movie_cover]):
+                raise ValueError("Invalid input")
+
+            length = int(length)
+            year = int(year)
+            ratings = float(ratings)
+            genres = [genre.strip() for genre in genre_input.split(',')]
+
+            cursor.execute("UPDATE movies SET title=?, language=?, length=?, year=?, synopsis=?, ratings=?, movieCover=? WHERE movieID=?",
+                        (title, language, length, year, synopsis, ratings, movie_cover, movieID))
+
+            # Delete and Insert new genre records for the movie
+            cursor.execute("DELETE FROM genre WHERE movieID=?", (movieID,))
+            for genre in genres:
+                cursor.execute("INSERT INTO genre (movieID, genreName) VALUES (?, ?)", (movieID, genre))
+            search_var.set(title)
+            displayMovie()
+            # Commit the values and close the dialog window and the connection
+            conn.commit()
+            conn.close()
+            dialog.destroy()
+        except ValueError:
+            # Catch ValueError if there are any input value conversion errors
+            messagebox.showwarning("Invalid Input", "Please enter valid values for length, year, and ratings.")
+            dialog.focus_force()
+
+    save_button = tk.Button(dialog, text="Save", command=save_movie)
+    save_button.grid(row=len(labels), columnspan=2, padx=5, pady=10)
+
+def delete_movie():
+    global MovieID
+    movie_id = MovieID
+    confirm = messagebox.askyesno("Confirm Delete", "Are you sure you want to delete this movie?")
+    if confirm:
+        try:
+            conn = sqlite3.connect("imdb.db")
+            cursor = conn.cursor()
+            cursor.execute("DELETE FROM genre WHERE movieID=?", (movie_id,))
+            #cursor.execute("DELETE FROM directs WHERE movieID=?", (movie_id,))
+            #cursor.execute("DELETE FROM casts WHERE movieID=?", (movie_id,))
+            #cursor.execute("DELETE FROM produces WHERE movieID=?", (movie_id,))
+            cursor.execute("DELETE FROM movies WHERE movieID=?", (movie_id,))
+
+            # Commit the changes and close the connection
+            conn.commit()
+            conn.close()
+
+            messagebox.showinfo("Movie Deleted", "The movie has been deleted successfully.")
+            movies_list = getMovies()
+            movie_title = movies_list[0]
+            search_var.set(movie_title)
+            displayMovie() if movies_list else None
+        except Exception as e:
+            messagebox.showerror("Error", "An error occurred while deleting the movie:\n" + str(e))
+    else:
+        messagebox.showinfo("Deletion Cancelled", "Deletion has been cancelled.")
+def display_movie():
+    print("Performing Display action for Movies")
+
+def create_actor():
+    print("Performing Create action for Actors")
+
+def update_actor():
+    print("Performing Update action for Actors")
+
+def delete_actor():
+    print("Performing Delete action for Actors")
+
+def display_actor():
+    print("Performing Display action for Actors")
+
+actions = {
+    ("Create", "Movie"): create_movie,
+    ("Update", "Movie"): update_movie,
+    ("Delete", "Movie"): delete_movie,
+    ("Display", "Movie"): display_movie,
+    ("Create", "Actor"): create_actor,
+    ("Update", "Actor"): update_actor,
+    ("Delete", "Actor"): delete_actor,
+    ("Display", "Actor"): display_actor,
+}
+
+def perform_action():
+    crudl = crudl_var.get()
+    entity = entity_var.get()
+
+    # Get the corresponding action from the dictionary and call it
+    action = actions.get((crudl, entity))
+    if action:
+        action()
+
 ################################## MAIN #####################################
 
 # MAIN WINDOW
@@ -470,14 +682,26 @@ window.state('zoomed')      # Maximize the window
 
 style = ttk.Style()
 style.theme_use('clam')
+style.map("Custom.TButton",
+          background=[("active", "gray")])
+style.map("TButton",
+          background=[("active", "gray")])
 style.configure("TButton", 
                 background="black", 
                 foreground="black",
                 highlightcolor="black",
                 padding=1,
                 borderwidth=0,
+                relief="flat",
+                selectbackground="red",
+                selectforeground="white")
+style.configure("Custom.TButton", 
+                background="black", 
+                foreground="#232323",
+                highlightcolor="#232323",
+                padding=1,
+                borderwidth=0,
                 relief="flat")
-style.map("TButton", background=[("active", "#28282D")])
 style.configure("Search.TEntry", 
                 padding = 8,
                 highlightcolor="",
@@ -526,12 +750,8 @@ logo_path = "assets\IMDB_Logo_2016 1.png"  # Replace with the actual path to you
 logo_image = Image.open(logo_path)
 logo_photo = ImageTk.PhotoImage(logo_image)
 info_button = ttk.Button(window, image=logo_photo, width=10, style="TButton", \
-                         command=lambda: messagebox.showinfo("Info", ("IMBD group 11 - Lavesores, Tabanas, Tilid")))
+                         command=lambda: messagebox.showinfo("Info", ("IMBD group 11 - Lavesores, Tabanas, Tilid", MovieID)))
 info_button.grid(row=0, column=0, padx=(0), pady=15, columnspan=2)
-
-# Create the logo label
-#logo_label = ttk.Label(window, image=logo_photo, background='#000000')
-#logo_label.grid(row=0, column=1, padx=(0,30), pady=10, columnspan=1)
 
 # Create the search bar
 search_var = tk.StringVar()
@@ -617,8 +837,27 @@ initial_image = bookmarked_photo if is_bookmarked else bookmark_photo
 style.configure("Custom.TButton", background="#232323", foreground="#232323",highlightcolor="#232323",
                 padding=1, borderwidth=0, relief="flat")
 bookmark_button = ttk.Button(window, image=initial_image, width=10, style="Custom.TButton", \
-                         command=lambda: toggleBookmark(MovieID))
+                         command=lambda: (toggleBookmark(MovieID), display_bookmarked_movies() if my_list_toggle else None))
 bookmark_button.grid(row=2, column=0, padx=(0), pady=(320,0), columnspan=2)
+
+# CRUDL
+crudl_var = tk.StringVar()
+crudl_var.set("Create")
+crudl_dropdown = ttk.Combobox(window, textvariable=crudl_var, values=["Create", "Update", "Delete", "Display"], state="readonly", style="TCombobox")
+crudl_dropdown.grid(row=3, column=0, padx=0, pady=0)
+
+# Entity
+entity_var = tk.StringVar()
+entity_var.set("Movie")
+entity_dropdown = ttk.Combobox(window, textvariable=entity_var, values=["Movie", "Producer", "Actor", "Director"], state="readonly", style="TCombobox")
+entity_dropdown.grid(row=3, column=1, padx=0, pady=0)
+
+# Select
+select_path = "assets\select.png"  # Replace with the actual path to your logo image file
+select_image = Image.open(select_path)
+select_photo = ImageTk.PhotoImage(select_image)
+select_button = ttk.Button(window, image=select_photo, width=10, style="Custom.TButton", command=perform_action)
+select_button.grid(row=5, column=0, padx=(0), pady=(0,70), columnspan=2)
 
 # Default Movie Details
 movieTitle = "House of the Dragon"
