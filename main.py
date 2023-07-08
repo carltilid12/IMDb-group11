@@ -637,8 +637,64 @@ def delete_movie():
             messagebox.showerror("Error", "An error occurred while deleting the movie:\n" + str(e))
     else:
         messagebox.showinfo("Deletion Cancelled", "Deletion has been cancelled.")
+
 def display_movie():
-    print("Performing Display action for Movies")
+    dialog = tk.Toplevel(window)
+    dialog.title("Display Movies")
+    dialog.configure(background="#28282D")
+
+    # Create a frame to hold the Treeview
+    frame = tk.Frame(dialog)
+    frame.pack(fill="both", expand=True)
+
+    tree = ttk.Treeview(frame, height=30)
+    tree["columns"] = ("Movie ID", "Title", "Language", "Length", "Year", "Synopsis", "Ratings", "Movie Cover", "Genre")
+
+    # Configure column headings
+    tree.heading("#0", text="")
+    tree.heading("Movie ID", text="Movie ID")
+    tree.heading("Title", text="Title")
+    tree.heading("Language", text="Language")
+    tree.heading("Length", text="Length")
+    tree.heading("Year", text="Year")
+    tree.heading("Synopsis", text="Synopsis")
+    tree.heading("Ratings", text="Ratings")
+    tree.heading("Movie Cover", text="Movie Cover")
+    tree.heading("Genre", text="Genre")
+
+    # Configure column widths
+    tree.column("#0", width=0, stretch=False)
+    tree.column("Movie ID", width=80)
+    tree.column("Title", width=150)
+    tree.column("Language", width=150)
+    tree.column("Length", width=50)
+    tree.column("Year", width=50)
+    tree.column("Synopsis", width=250)
+    tree.column("Ratings", width=50)
+    tree.column("Movie Cover", width=150)
+    tree.column("Genre", width=150)
+
+    # Configure treeview size
+    tree.pack(fill="both", expand=True)
+
+    # Retrieve data from the "movies" table
+    conn = sqlite3.connect("imdb.db")
+    cursor = conn.cursor()
+    cursor.execute("SELECT movies.movieID, movies.title, movies.language, movies.length, movies.year, \
+                    movies.synopsis, movies.ratings, movies.movieCover, GROUP_CONCAT(genre.genreName) \
+                    FROM movies LEFT JOIN genre ON movies.movieID = genre.movieID \
+                    GROUP BY movies.movieID")
+    movies_data = cursor.fetchall()
+    conn.close()
+
+    # Insert movie data into the Treeview
+    for movie in movies_data:
+        movie_id, title, language, length, year, synopsis, ratings, movie_cover, genres = movie
+        tree.insert("", "end", iid=movie_id, values=(movie_id, title, language, length, year, synopsis, ratings, movie_cover, genres))
+
+    # Set the column width to fit the content
+    tree["displaycolumns"] = ("Movie ID", "Title", "Language", "Length", "Year", "Synopsis", "Ratings", "Movie Cover", "Genre")
+    tree["show"] = "headings"
 
 def create_actor():
     print("Performing Create action for Actors")
