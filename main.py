@@ -852,15 +852,15 @@ def update_producer():
                     cursor.execute("SELECT COUNT(*) FROM produces WHERE producerID=? AND movieID=?", (producer_id, og_movie_id))
                     count = cursor.fetchone()[0]
                     if count == 0:
-                        cursor.execute("UPDATE produces SET producerID=? WHERE movieID=?", (movie_id, producer_id))
+                        cursor.execute("UPDATE produces SET producerID=? WHERE movieID=?", (producer_id, movie_id))
                     else:
-                        cursor.execute("INSERT INTO produces (producerID, movieID) VALUES (?, ?)", (movie_id, producer_id))
+                        cursor.execute("UPDATE produces SET producerID=? WHERE movieID=?", (producer_id, movie_id))
                 else:
                     # Check if movie_id has a producer in the produces table
                     cursor.execute("SELECT COUNT(*) FROM produces WHERE movieID=?", (movie_id,))
                     count = cursor.fetchone()[0]
                     if count > 0:
-                        cursor.execute("UPDATE produces SET producerID=? WHERE movieID=?", (movie_id, producer_id))
+                        cursor.execute("UPDATE produces SET producerID=? WHERE movieID=?", (producer_id, movie_id))
                     else:
                         # Insert producer_id and movie_id into the produces table
                         cursor.execute("INSERT INTO produces (producerID, movieID) VALUES (?, ?)", (producer_id, movie_id))
@@ -885,44 +885,86 @@ def update_producer():
     save_button.grid(row=len(producer_labels), columnspan=2, padx=5, pady=10)
 
 def delete_producer():
-    # Prompt user for the producer ID to delete
-    producer_id = simpledialog.askinteger("Delete Producer", "Enter Producer ID:")
+    dialog = tk.Toplevel(window)
+    dialog.title("Delete Producer")
+    dialog.configure(background="#28282D")
 
-    # Check if producer ID is valid
-    if producer_id is None:
-        return  # User cancelled, exit the function
+    # Create label and entry field for producer ID
+    producer_id_label = ttk.Label(dialog, text="Producer ID:", background="#28282D", foreground="white", font=("Arial", 11))
+    producer_id_label.grid(row=0, column=0, padx=5, pady=5)
 
-    try:
-        conn = sqlite3.connect("imdb.db")
-        cursor = conn.cursor()
+    producer_id_entry = ttk.Entry(dialog, width=50)
+    producer_id_entry.grid(row=0, column=1, padx=5, pady=5)
 
-        # Check if producer ID exists in the producers table
-        cursor.execute("SELECT COUNT(*) FROM producers WHERE producerID=?", (producer_id,))
-        count = cursor.fetchone()[0]
-        if count == 0:
-            conn.close()
-            messagebox.showwarning("Invalid Input", "Producer ID does not exist")
+    # Create label and entry field for movie ID
+    movie_id_label = ttk.Label(dialog, text="Movie ID:", background="#28282D", foreground="white", font=("Arial", 11))
+    movie_id_label.grid(row=1, column=0, padx=5, pady=5)
+
+    movie_id_entry = ttk.Entry(dialog, width=50)
+    movie_id_entry.grid(row=1, column=1, padx=5, pady=5)
+
+    def confirm_deletion():
+        producer_id = producer_id_entry.get()
+        movie_id = movie_id_entry.get()
+
+        if producer_id == "":
+            messagebox.showwarning("Invalid Input", "Producer ID cannot be empty")
+            dialog.focus_force()
             return
-        
-        # Get the producer's name for the confirmation dialog
-        cursor.execute("SELECT producerName FROM producers WHERE producerID=?", (producer_id,))
-        producer_name = cursor.fetchone()[0]
 
-        # Show confirmation dialog before deleting
-        result = messagebox.askquestion("Confirm Deletion", f"Are you sure you want to delete {producer_name}?")
-        if result == "yes":
-            cursor.execute("DELETE FROM producers WHERE producerID=?", (producer_id,))
-            cursor.execute("DELETE FROM produces WHERE producerID=?", (producer_id,))
+        try:
+            conn = sqlite3.connect("imdb.db")
+            cursor = conn.cursor()
 
-            conn.commit()
-            conn.close()
-            messagebox.showinfo("Success", "Producer deleted successfully")
-        else:
-            conn.close()
-            messagebox.showinfo("Cancelled", "Operation Cancelled")
-    except Exception as e:
-        messagebox.showwarning("Error", str(e))
-        conn.close()
+            cursor.execute("SELECT COUNT(*) FROM producers WHERE producerID=?", (producer_id,))
+            count = cursor.fetchone()[0]
+            if count == 0:
+                messagebox.showwarning("Invalid Input", "Producer ID does not exist")
+                dialog.focus_force()
+                return
+
+            producer_name = cursor.execute("SELECT producerName FROM producers WHERE producerID=?", (producer_id,)).fetchone()[0]
+
+            if movie_id != "":
+                cursor.execute("SELECT COUNT(*) FROM movies WHERE movieID=?", (movie_id,))
+                count = cursor.fetchone()[0]
+                if count == 0:
+                    messagebox.showwarning("Invalid Input", "Movie ID does not exist")
+                    dialog.focus_force()
+                    return
+
+                cursor.execute("SELECT COUNT(*) FROM produces WHERE producerID=? AND movieID=?", (producer_id, movie_id))
+                count = cursor.fetchone()[0]
+                if count == 0:
+                    messagebox.showwarning("Invalid Input", "Producer is not associated with the movie")
+                    dialog.focus_force()
+                    return
+
+                movie_title = cursor.execute("SELECT title FROM movies WHERE movieID=?", (movie_id,)).fetchone()[0]
+                result = messagebox.askquestion("Confirm Deletion", f"Are you sure you want to delete producer '{producer_name}' from movie '{movie_title}'?")
+                if result == "yes":
+                    cursor.execute("DELETE FROM produces WHERE producerID=? AND movieID=?", (producer_id, movie_id))
+                    conn.commit()
+                    messagebox.showinfo("Success", f"Producer '{producer_name}' deleted successfully from movie '{movie_title}'")
+            else:
+                result = messagebox.askquestion("Confirm Deletion", f"Are you sure you want to delete producer '{producer_name}'?")
+                if result == "yes":
+                    cursor.execute("DELETE FROM producers WHERE producerID=?", (producer_id,))
+                    cursor.execute("DELETE FROM produces WHERE producerID=?", (producer_id,))
+                    conn.commit()
+                    messagebox.showinfo("Success", f"Producer '{producer_name}' deleted successfully")
+
+            dialog.destroy()
+        except Exception as e:
+            messagebox.showwarning("Error", str(e))
+            dialog.focus_force()
+
+    # Create button to confirm deletion
+    confirm_button = tk.Button(dialog, text="Confirm", command=confirm_deletion)
+    confirm_button.grid(row=2, columnspan=2, padx=5, pady=10)
+
+    dialog.mainloop()
+
 
 def display_producer():
     dialog = tk.Toplevel(window)
@@ -1222,40 +1264,85 @@ def update_actor():
     conn.close()
 
 def delete_actor():
-    actor_id = simpledialog.askinteger("Actor ID", "Enter Actor ID:")
-    if actor_id is None:
-        return  # User cancelled, exit the function
-    
-    conn = sqlite3.connect("imdb.db")
-    cursor = conn.cursor()
-    
-    # Check if actor ID exists in actors table
-    cursor.execute("SELECT COUNT(*) FROM actors WHERE actorID=?", (actor_id,))
-    count = cursor.fetchone()[0]
-    if count == 0:
-        messagebox.showwarning("Invalid Input", "Actor ID does not exist")
-        conn.close()
-        return  # Exit the function if actor ID does not exist
-    
-    #Confirm Deletetion 
-    cursor.execute("SELECT actorName FROM actors WHERE actorID=?", (actor_id,))
-    actor_name = cursor.fetchone()[0]
-    result = messagebox.askquestion("Confirm Deletion", f"Are you sure you want to delete {actor_name}?")
-    if result == "no":
-        conn.close()
-        return  # Exit the function if deletion is not confirmed
-    
-    try:
-        # Delete actor from actors and casts table
-        cursor.execute("DELETE FROM actors WHERE actorID=?", (actor_id,))
-        cursor.execute("DELETE FROM casts WHERE actorID=?", (actor_id,))
-        
-        conn.commit()
-        messagebox.showinfo("Success", "Actor deleted successfully")
-    except Exception as e:
-        messagebox.showwarning("Error", str(e))
-    
-    conn.close()
+    dialog = tk.Toplevel(window)
+    dialog.title("Delete Actor")
+    dialog.configure(background="#28282D")
+
+    # Create label and entry field for actor ID
+    actor_id_label = ttk.Label(dialog, text="Actor ID:", background="#28282D", foreground="white", font=("Arial", 11))
+    actor_id_label.grid(row=0, column=0, padx=5, pady=5)
+
+    actor_id_entry = ttk.Entry(dialog, width=50)
+    actor_id_entry.grid(row=0, column=1, padx=5, pady=5)
+
+    # Create label and entry field for movie ID
+    movie_id_label = ttk.Label(dialog, text="Movie ID:", background="#28282D", foreground="white", font=("Arial", 11))
+    movie_id_label.grid(row=1, column=0, padx=5, pady=5)
+
+    movie_id_entry = ttk.Entry(dialog, width=50)
+    movie_id_entry.grid(row=1, column=1, padx=5, pady=5)
+
+    def confirm_deletion():
+        actor_id = actor_id_entry.get()
+        movie_id = movie_id_entry.get()
+
+        if actor_id == "":
+            messagebox.showwarning("Invalid Input", "Actor ID cannot be empty")
+            dialog.focus_force()
+            return
+
+        try:
+            conn = sqlite3.connect("imdb.db")
+            cursor = conn.cursor()
+
+            cursor.execute("SELECT COUNT(*) FROM actors WHERE actorID=?", (actor_id,))
+            count = cursor.fetchone()[0]
+            if count == 0:
+                messagebox.showwarning("Invalid Input", "Actor ID does not exist")
+                dialog.focus_force()
+                return
+
+            actor_name = cursor.execute("SELECT actorName FROM actors WHERE actorID=?", (actor_id,)).fetchone()[0]
+
+            if movie_id != "":
+                cursor.execute("SELECT COUNT(*) FROM movies WHERE movieID=?", (movie_id,))
+                count = cursor.fetchone()[0]
+                if count == 0:
+                    messagebox.showwarning("Invalid Input", "Movie ID does not exist")
+                    dialog.focus_force()
+                    return
+
+                cursor.execute("SELECT COUNT(*) FROM casts WHERE actorID=? AND movieID=?", (actor_id, movie_id))
+                count = cursor.fetchone()[0]
+                if count == 0:
+                    messagebox.showwarning("Invalid Input", "Actor is not associated with the movie")
+                    dialog.focus_force()
+                    return
+
+                movie_title = cursor.execute("SELECT title FROM movies WHERE movieID=?", (movie_id,)).fetchone()[0]
+                result = messagebox.askquestion("Confirm Deletion", f"Are you sure you want to delete actor '{actor_name}' from movie '{movie_title}'?")
+                if result == "yes":
+                    cursor.execute("DELETE FROM casts WHERE actorID=? AND movieID=?", (actor_id, movie_id))
+                    conn.commit()
+                    messagebox.showinfo("Success", f"Actor '{actor_name}' deleted successfully from movie '{movie_title}'")
+            else:
+                result = messagebox.askquestion("Confirm Deletion", f"Are you sure you want to delete actor '{actor_name}'?")
+                if result == "yes":
+                    cursor.execute("DELETE FROM actors WHERE actorID=?", (actor_id,))
+                    cursor.execute("DELETE FROM casts WHERE actorID=?", (actor_id,))
+                    conn.commit()
+                    messagebox.showinfo("Success", f"Actor '{actor_name}' deleted successfully")
+
+            dialog.destroy()
+        except Exception as e:
+            messagebox.showwarning("Error", str(e))
+            dialog.focus_force()
+
+    # Create button to confirm deletion
+    confirm_button = tk.Button(dialog, text="Confirm", command=confirm_deletion)
+    confirm_button.grid(row=2, columnspan=2, padx=5, pady=10)
+
+    dialog.mainloop()
 
 def display_actor():
     dialog = tk.Toplevel(window)
@@ -1515,43 +1602,85 @@ def update_director():
     conn.close()
 
 def delete_director():
-    director_id = simpledialog.askinteger("Director ID", "Enter Director ID:")
-    if director_id is None:
-        return  # User cancelled, exit the function
+    dialog = tk.Toplevel(window)
+    dialog.title("Delete Director")
+    dialog.configure(background="#28282D")
 
-    # Check if director ID exists in directors table
-    conn = sqlite3.connect("imdb.db")
-    cursor = conn.cursor()
-    cursor.execute("SELECT COUNT(*) FROM directors WHERE directorID=?", (director_id,))
-    count = cursor.fetchone()[0]
-    if count == 0:
-        messagebox.showwarning("Invalid Input", "Director ID does not exist")
-        conn.close()
-        return
+    # Create label and entry field for director ID
+    director_id_label = ttk.Label(dialog, text="Director ID:", background="#28282D", foreground="white", font=("Arial", 11))
+    director_id_label.grid(row=0, column=0, padx=5, pady=5)
 
-    # Retrieve director name for confirmation message
-    cursor.execute("SELECT directorName FROM directors WHERE directorID=?", (director_id,))
-    director_name = cursor.fetchone()[0]
+    director_id_entry = ttk.Entry(dialog, width=50)
+    director_id_entry.grid(row=0, column=1, padx=5, pady=5)
 
-    # Confirm deletion with the user
-    result = messagebox.askquestion("Confirm Deletion",
-                                    f"Are you sure you want to delete the director '{director_name}'?")
-    if result == "no":
-        conn.close()
-        return
+    # Create label and entry field for movie ID
+    movie_id_label = ttk.Label(dialog, text="Movie ID:", background="#28282D", foreground="white", font=("Arial", 11))
+    movie_id_label.grid(row=1, column=0, padx=5, pady=5)
 
-    try:
-        # Delete director information from directors table
-        cursor.execute("DELETE FROM directors WHERE directorID=?", (director_id,))
-        # Delete director's movie associations from directs table
-        cursor.execute("DELETE FROM directs WHERE directorID=?", (director_id,))
+    movie_id_entry = ttk.Entry(dialog, width=50)
+    movie_id_entry.grid(row=1, column=1, padx=5, pady=5)
 
-        conn.commit()
-        messagebox.showinfo("Success", "Director information deleted successfully")
-    except Exception as e:
-        messagebox.showerror("Error", f"An error occurred while deleting director information: {str(e)}")
+    def confirm_deletion():
+        director_id = director_id_entry.get()
+        movie_id = movie_id_entry.get()
 
-    conn.close()
+        if director_id == "":
+            messagebox.showwarning("Invalid Input", "Director ID cannot be empty")
+            dialog.focus_force()
+            return
+
+        try:
+            conn = sqlite3.connect("imdb.db")
+            cursor = conn.cursor()
+
+            cursor.execute("SELECT COUNT(*) FROM directors WHERE directorID=?", (director_id,))
+            count = cursor.fetchone()[0]
+            if count == 0:
+                messagebox.showwarning("Invalid Input", "Director ID does not exist")
+                dialog.focus_force()
+                return
+
+            director_name = cursor.execute("SELECT directorName FROM directors WHERE directorID=?", (director_id,)).fetchone()[0]
+
+            if movie_id != "":
+                cursor.execute("SELECT COUNT(*) FROM movies WHERE movieID=?", (movie_id,))
+                count = cursor.fetchone()[0]
+                if count == 0:
+                    messagebox.showwarning("Invalid Input", "Movie ID does not exist")
+                    dialog.focus_force()
+                    return
+
+                cursor.execute("SELECT COUNT(*) FROM directs WHERE directorID=? AND movieID=?", (director_id, movie_id))
+                count = cursor.fetchone()[0]
+                if count == 0:
+                    messagebox.showwarning("Invalid Input", "Director is not associated with the movie")
+                    dialog.focus_force()
+                    return
+
+                movie_title = cursor.execute("SELECT title FROM movies WHERE movieID=?", (movie_id,)).fetchone()[0]
+                result = messagebox.askquestion("Confirm Deletion", f"Are you sure you want to delete director '{director_name}' from movie '{movie_title}'?")
+                if result == "yes":
+                    cursor.execute("DELETE FROM directs WHERE directorID=? AND movieID=?", (director_id, movie_id))
+                    conn.commit()
+                    messagebox.showinfo("Success", f"Director '{director_name}' deleted successfully from movie '{movie_title}'")
+            else:
+                result = messagebox.askquestion("Confirm Deletion", f"Are you sure you want to delete director '{director_name}'?")
+                if result == "yes":
+                    cursor.execute("DELETE FROM directors WHERE directorID=?", (director_id,))
+                    cursor.execute("DELETE FROM directs WHERE directorID=?", (director_id,))
+                    conn.commit()
+                    messagebox.showinfo("Success", f"Director '{director_name}' deleted successfully")
+
+            dialog.destroy()
+        except Exception as e:
+            messagebox.showwarning("Error", str(e))
+            dialog.focus_force()
+
+    # Create button to confirm deletion
+    confirm_button = tk.Button(dialog, text="Confirm", command=confirm_deletion)
+    confirm_button.grid(row=2, columnspan=2, padx=5, pady=10)
+
+    dialog.mainloop()
 
 def display_director():
     dialog = tk.Toplevel(window)
@@ -1604,6 +1733,7 @@ def display_director():
     # Create a button to close the dialog
     close_button = tk.Button(dialog, text="Close", command=dialog.destroy)
     close_button.pack(pady=10)
+    
 actions = {
     ("Create", "Movie"): create_movie,
     ("Update", "Movie"): update_movie,
