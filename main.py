@@ -621,7 +621,7 @@ def delete_movie():
             cursor.execute("DELETE FROM genre WHERE movieID=?", (movie_id,))
             #cursor.execute("DELETE FROM directs WHERE movieID=?", (movie_id,))
             cursor.execute("DELETE FROM casts WHERE movieID=?", (movie_id,))
-            #cursor.execute("DELETE FROM produces WHERE movieID=?", (movie_id,))
+            cursor.execute("DELETE FROM produces WHERE movieID=?", (movie_id,))
             cursor.execute("DELETE FROM movies WHERE movieID=?", (movie_id,))
 
             # Commit the changes and close the connection
@@ -699,16 +699,280 @@ def display_movie():
 
 ###################### CRUDL PRODUCER FUNCTIONS ####################
 def create_producer():
-    return
+    dialog = tk.Toplevel(window)
+    dialog.title("Create Producer")
+    dialog.configure(background="#28282D")
+
+    # Create labels and entry fields for producer information
+    producer_labels = ["Producer ID:", "Producer Name:", "Movie ID:"]
+    producer_entries = []
+    for i, label_text in enumerate(producer_labels):
+        label = ttk.Label(dialog, text=label_text, background="#28282D", foreground="white", font=("Arial", 11))
+        label.grid(row=i, column=0, padx=5, pady=5)
+
+        entry = ttk.Entry(dialog, width=50)
+        entry.grid(row=i, column=1, padx=5, pady=5)
+        producer_entries.append(entry)
+    
+    def save_producer():
+        try:
+            conn = sqlite3.connect("imdb.db")
+            cursor = conn.cursor()
+            # Retrieve producer information from entry fields
+            producer_id = producer_entries[0].get()
+            producer_name = producer_entries[1].get()
+            movie_id = producer_entries[2].get()
+
+            if not producer_id.isdigit():
+                raise ValueError("Producer ID must be an integer")
+            if producer_name == "":
+                raise ValueError("Producer Name must be filled")
+            
+            producer_id = int(producer_id)
+
+            # Check if producer_id already exists in the producers table
+            cursor.execute("SELECT COUNT(*) FROM producers WHERE producerID=?", (producer_id,))
+            count = cursor.fetchone()[0]
+            if count > 0:
+                conn.close()
+                raise ValueError("Producer ID already exists")
+
+            if movie_id != "":
+                if not movie_id.isdigit():
+                    raise ValueError("Movie ID must be an integer")
+                movie_id = int(movie_id)
+                # Check if movie_id exists in the movies table
+                cursor.execute("SELECT COUNT(*) FROM movies WHERE movieID=?", (movie_id,))
+                count = cursor.fetchone()[0]
+                if count == 0:
+                    conn.close()
+                    raise ValueError("Movie ID does not exist")
+
+                # Check if movie_id has a producer in the producers table
+                cursor.execute("SELECT COUNT(*) FROM produces WHERE movieID=?", (movie_id,))
+                count = cursor.fetchone()[0]
+                if count > 0:
+                    cursor.execute("SELECT producerID FROM produces WHERE movieID=?", (movie_id,))
+                    og_movie_id = cursor.fetchone()[0]
+                    og_movie_id = int(og_movie_id)
+                    cursor.execute("UPDATE produces SET producerID=? WHERE producerID=?", (producer_id, og_movie_id))
+                else:
+                    cursor.execute("INSERT INTO produces (producerID, movieID) VALUES (?, ?)", (producer_id, movie_id))
+
+            cursor.execute("INSERT INTO producers (producerID, producerName) VALUES (?, ?)", (producer_id, producer_name))
+            conn.commit()
+            conn.close()
+   
+            if (movie_id != ""):
+                search_var.set(movie_id) 
+                displayMovie() 
+
+            messagebox.showinfo("Success", "Producer information added successfully")
+            dialog.destroy()
+        except ValueError as e:
+            conn.close()
+            messagebox.showwarning("Invalid Input", str(e))
+            dialog.focus_force()
+
+    # Create a button to save the producer information
+    save_button = tk.Button(dialog, text="Save", command=save_producer)
+    save_button.grid(row=len(producer_labels), columnspan=2, padx=5, pady=10)
 
 def update_producer():
-    return
+    producer_id = simpledialog.askinteger("Producer ID", "Enter Producer ID:")
+    if producer_id is None:
+        return  # User cancelled, exit the function
+    while True:
+        # Check if producer ID exists in producers table
+        conn = sqlite3.connect("imdb.db")
+        cursor = conn.cursor()
+        cursor.execute("SELECT COUNT(*) FROM producers WHERE producerID=?", (producer_id,))
+        count = cursor.fetchone()[0]
+        if count == 0:
+            messagebox.showwarning("Invalid Input", "Producer ID does not exist")
+            producer_id = simpledialog.askinteger("Producer ID", "Enter Producer ID:")
+            if producer_id is None:
+                conn.close()
+                return  # User cancelled, exit the function
+        else:
+            break
+
+    dialog = tk.Toplevel(window)
+    dialog.title("Update Producer")
+    dialog.configure(background="#28282D")
+
+    # Create labels and entry fields for producer information
+    producer_labels = ["Producer Name:", "Movie ID:"]
+    producer_entries = []
+    for i, label_text in enumerate(producer_labels):
+        label = ttk.Label(dialog, text=label_text, background="#28282D", foreground="white", font=("Arial", 11))
+        label.grid(row=i, column=0, padx=5, pady=5)
+
+        entry = ttk.Entry(dialog, width=50)
+        entry.grid(row=i, column=1, padx=5, pady=5)
+        producer_entries.append(entry)
+
+    # Retrieve current producer information
+    cursor.execute("SELECT producerName, movieID FROM producers \
+                   LEFT JOIN produces ON producers.producerID = produces.producerID WHERE producers.producerID=?", (producer_id,))
+    row = cursor.fetchone()
+    if row is not None:
+        producer_name, movie_id = row
+        producer_entries[0].insert(0, producer_name)
+        if movie_id is not None:
+            producer_entries[1].insert(0, movie_id)
+            og_movie_id = int((movie_id))
+
+    def save_producer():
+        try:
+            conn = sqlite3.connect("imdb.db")
+            cursor = conn.cursor()
+            # Retrieve updated producer information from entry fields
+            producer_name = producer_entries[0].get()
+            movie_id = producer_entries[1].get()
+
+            if producer_name == "":
+                raise ValueError("Producer Name must be filled")
+
+            if movie_id != "":
+                if not movie_id.isdigit():
+                    raise ValueError("Movie ID must be an integer")
+                movie_id = int(movie_id)
+                # Check if movie_id exists in the movies table
+                cursor.execute("SELECT COUNT(*) FROM movies WHERE movieID=?", (movie_id,))
+                count = cursor.fetchone()[0]
+                if count == 0:
+                    conn.close()
+                    raise ValueError("Movie ID does not exist")
+
+                # Check if producer_id already exists in the produces table
+                cursor.execute("SELECT COUNT(*) FROM produces WHERE producerID=?", (producer_id,))
+                count = cursor.fetchone()[0]
+                if count > 0:
+                    # Check if movie_id is paired with the producer_id
+                    cursor.execute("SELECT COUNT(*) FROM produces WHERE producerID=? AND movieID=?", (producer_id, og_movie_id))
+                    count = cursor.fetchone()[0]
+                    if count == 0:
+                        cursor.execute("UPDATE produces SET producerID=? WHERE movieID=?", (movie_id, producer_id))
+                    else:
+                        cursor.execute("INSERT INTO produces (producerID, movieID) VALUES (?, ?)", (movie_id, producer_id))
+                else:
+                    # Check if movie_id has a producer in the produces table
+                    cursor.execute("SELECT COUNT(*) FROM produces WHERE movieID=?", (movie_id,))
+                    count = cursor.fetchone()[0]
+                    if count > 0:
+                        cursor.execute("UPDATE produces SET producerID=? WHERE movieID=?", (movie_id, producer_id))
+                    else:
+                        # Insert producer_id and movie_id into the produces table
+                        cursor.execute("INSERT INTO produces (producerID, movieID) VALUES (?, ?)", (producer_id, movie_id))
+
+            cursor.execute("UPDATE producers SET producerName=? WHERE producerID=?", (producer_name, producer_id))
+            conn.commit()
+            conn.close()
+
+            if movie_id != "":
+                search_var.set(movie_id)
+                displayMovie()
+
+            messagebox.showinfo("Success", "Producer information updated successfully")
+            dialog.destroy()
+        except ValueError as e:
+            conn.close()
+            messagebox.showwarning("Invalid Input", str(e))
+            dialog.focus_force()
+
+    # Create a button to save the producer information
+    save_button = tk.Button(dialog, text="Save", command=save_producer)
+    save_button.grid(row=len(producer_labels), columnspan=2, padx=5, pady=10)
 
 def delete_producer():
-    return
+    # Prompt user for the producer ID to delete
+    producer_id = simpledialog.askinteger("Delete Producer", "Enter Producer ID:")
+
+    # Check if producer ID is valid
+    if producer_id is None:
+        return  # User cancelled, exit the function
+
+    try:
+        conn = sqlite3.connect("imdb.db")
+        cursor = conn.cursor()
+
+        # Check if producer ID exists in the producers table
+        cursor.execute("SELECT COUNT(*) FROM producers WHERE producerID=?", (producer_id,))
+        count = cursor.fetchone()[0]
+        if count == 0:
+            conn.close()
+            messagebox.showwarning("Invalid Input", "Producer ID does not exist")
+            return
+        
+        # Get the producer's name for the confirmation dialog
+        cursor.execute("SELECT producerName FROM producers WHERE producerID=?", (producer_id,))
+        producer_name = cursor.fetchone()[0]
+
+        # Show confirmation dialog before deleting
+        result = messagebox.askquestion("Confirm Deletion", f"Are you sure you want to delete {producer_name}?")
+        if result == "yes":
+            cursor.execute("DELETE FROM producers WHERE producerID=?", (producer_id,))
+            cursor.execute("DELETE FROM produces WHERE producerID=?", (producer_id,))
+
+            conn.commit()
+            conn.close()
+            messagebox.showinfo("Success", "Producer deleted successfully")
+        else:
+            conn.close()
+            messagebox.showinfo("Cancelled", "Operation Cancelled")
+    except Exception as e:
+        messagebox.showwarning("Error", str(e))
+        conn.close()
 
 def display_producer():
-    return
+    dialog = tk.Toplevel(window)
+    dialog.title("Display Producers")
+    dialog.configure(background="#28282D")
+
+    # Create a frame to hold the Treeview
+    frame = tk.Frame(dialog)
+    frame.pack(fill="both", expand=True)
+
+    tree = ttk.Treeview(frame, height=30)
+    tree["columns"] = ("Producer ID", "Producer Name", "Movie Title")
+
+    # Configure column headings
+    tree.heading("#0", text="")
+    tree.heading("Producer ID", text="Producer ID")
+    tree.heading("Producer Name", text="Producer Name")
+    tree.heading("Movie Title", text="Movie Title")
+
+    # Configure column widths
+    tree.column("#0", width=0, stretch=False)
+    tree.column("Producer ID", width=80)
+    tree.column("Producer Name", width=200)
+    tree.column("Movie Title", width=200)
+
+    # Configure treeview size
+    tree.pack(fill="both", expand=True)
+
+    # Retrieve data from the "producers" and "movies" tables
+    conn = sqlite3.connect("imdb.db")
+    cursor = conn.cursor()
+    cursor.execute("SELECT producers.producerID, producers.producerName, movies.title \
+                    FROM producers \
+                    LEFT JOIN produces ON producers.producerID = produces.producerID \
+                    LEFT JOIN movies ON produces.movieID = movies.movieID")
+    producers_data = cursor.fetchall()
+    conn.close()
+
+    # Insert producer data into the Treeview
+    for producer in producers_data:
+        producer_id, producer_name, movie_title = producer
+        tree.insert("", "end", values=(producer_id, producer_name, movie_title))
+
+    # Set the column width to fit the content
+    tree["displaycolumns"] = ("Producer ID", "Producer Name", "Movie Title")
+    tree["show"] = "headings"
+
+    dialog.transient(window)
+
 
 ###################### CRUDL ACTOR FUNCTIONS ######################
 def create_actor():
