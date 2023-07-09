@@ -445,7 +445,8 @@ def autofillSearchEntry(event=None):
     if selected_suggestion:
         search_var.set(selected_suggestion)  # Set the search entry text to the selected suggestion
 
-# CRUDL FUNCTIONS
+
+###################### CRUDL MOVIE FUNCTIONS ####################
 def create_movie():
     dialog = tk.Toplevel(window)
     dialog.title("Create Movie")
@@ -696,6 +697,20 @@ def display_movie():
     tree["displaycolumns"] = ("Movie ID", "Title", "Language", "Length", "Year", "Synopsis", "Ratings", "Movie Cover", "Genre")
     tree["show"] = "headings"
 
+###################### CRUDL PRODUCER FUNCTIONS ####################
+def create_producer():
+    return
+
+def update_producer():
+    return
+
+def delete_producer():
+    return
+
+def display_producer():
+    return
+
+###################### CRUDL ACTOR FUNCTIONS ######################
 def create_actor():
     dialog = tk.Toplevel(window)
     dialog.title("Create Actor")
@@ -933,23 +948,105 @@ def update_actor():
             messagebox.showwarning("Invalid Input", str(e))
             dialog.focus_force()
 
-
     save_button = tk.Button(dialog, text="Save", command=save_actor)
     save_button.grid(row=len(actor_labels) + 2, columnspan=2, padx=5, pady=10)
     conn.close()
 
-
 def delete_actor():
-    print("Performing Delete action for Actors")
+    actor_id = simpledialog.askinteger("Actor ID", "Enter Actor ID:")
+    if actor_id is None:
+        return  # User cancelled, exit the function
+    
+    conn = sqlite3.connect("imdb.db")
+    cursor = conn.cursor()
+    
+    # Check if actor ID exists in actors table
+    cursor.execute("SELECT COUNT(*) FROM actors WHERE actorID=?", (actor_id,))
+    count = cursor.fetchone()[0]
+    if count == 0:
+        messagebox.showwarning("Invalid Input", "Actor ID does not exist")
+        conn.close()
+        return  # Exit the function if actor ID does not exist
+    
+    #Confirm Deletetion 
+    cursor.execute("SELECT actorName FROM actors WHERE actorID=?", (actor_id,))
+    actor_name = cursor.fetchone()[0]
+    result = messagebox.askquestion("Confirm Deletion", f"Are you sure you want to delete {actor_name}?")
+    if result == "no":
+        conn.close()
+        return  # Exit the function if deletion is not confirmed
+    
+    try:
+        # Delete actor from actors and casts table
+        cursor.execute("DELETE FROM actors WHERE actorID=?", (actor_id,))
+        cursor.execute("DELETE FROM casts WHERE actorID=?", (actor_id,))
+        
+        conn.commit()
+        messagebox.showinfo("Success", "Actor deleted successfully")
+    except Exception as e:
+        messagebox.showwarning("Error", str(e))
+    
+    conn.close()
 
 def display_actor():
-    print("Performing Display action for Actors")
+    dialog = tk.Toplevel(window)
+    dialog.title("Display Actors")
+    dialog.configure(background="#28282D")
+
+    # Create a frame to hold the Treeview
+    frame = tk.Frame(dialog)
+    frame.pack(fill="both", expand=True)
+
+    tree = ttk.Treeview(frame, height=30)
+    tree["columns"] = ("Actor ID", "Actor Name", "About", "Movie Title", "Character")
+
+    # Configure column headings
+    tree.heading("#0", text="")
+    tree.heading("Actor ID", text="Actor ID")
+    tree.heading("Actor Name", text="Actor Name")
+    tree.heading("About", text="About")
+    tree.heading("Movie Title", text="Movie Title")
+    tree.heading("Character", text="Character")
+
+    # Configure column widths
+    tree.column("#0", width=0, stretch=False)
+    tree.column("Actor ID", width=80)
+    tree.column("Actor Name", width=150)
+    tree.column("About", width=250)
+    tree.column("Movie Title", width=150)
+    tree.column("Character", width=150)
+
+    # Configure treeview size
+    tree.pack(fill="both", expand=True)
+
+    # Retrieve data from the "actors" and "casts" tables
+    conn = sqlite3.connect("imdb.db")
+    cursor = conn.cursor()
+    cursor.execute("SELECT actors.actorID, actors.actorName, actors.about, movies.title, casts.character \
+                    FROM actors \
+                    LEFT JOIN casts ON actors.actorID = casts.actorID \
+                    LEFT JOIN movies ON casts.movieID = movies.movieID")
+    actors_data = cursor.fetchall()
+    conn.close()
+
+    # Insert actor data into the Treeview
+    for actor in actors_data:
+        actor_id, actor_name, about, movie_title, character = actor
+        tree.insert("", "end", iid=actor_id, values=(actor_id, actor_name, about, movie_title, character))
+
+    # Set the column width to fit the content
+    tree["displaycolumns"] = ("Actor ID", "Actor Name", "About", "Movie Title", "Character")
+    tree["show"] = "headings"
 
 actions = {
     ("Create", "Movie"): create_movie,
     ("Update", "Movie"): update_movie,
     ("Delete", "Movie"): delete_movie,
     ("Display", "Movie"): display_movie,
+    ("Create", "Producer"): create_producer,
+    ("Update", "Producer"): update_producer,
+    ("Delete", "Producer"): delete_producer,
+    ("Display", "Producer"): display_producer,
     ("Create", "Actor"): create_actor,
     ("Update", "Actor"): update_actor,
     ("Delete", "Actor"): delete_actor,
