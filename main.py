@@ -119,12 +119,16 @@ def displayMovie(event=None):
         for row in list(director_widgets_dict.keys()):
             delete_director_info(row)
         infoCanvas.delete("director_label")
+
+        # Transfered from create_director info
+        # Destroy the "Director" label if it exists
+        for child in infoCanvas.winfo_children():
+            if isinstance(child, ttk.Label) and child.cget("text") == "Director:":
+                child.destroy()
         # Update the director labels and text fields for each director in the movie
         for idx, director_data in enumerate(directors_data):
             create_director_info(director_data, idx)
         # Calculate the y-coordinate for the new director label based on the row
-
-
         global current_cover_image
         try:
             if movieCoverPath and os.path.exists(movieCoverPath):
@@ -231,11 +235,6 @@ director_widgets_dict = {}
 director_Label = None
 def create_director_info(director_data, row):
     global director_Label
-    # Destroy the "Director" label if it exists
-    for child in infoCanvas.winfo_children():
-        if isinstance(child, ttk.Label) and child.cget("text") == "Director:":
-            child.destroy()
-
     director_name, director_about = director_data
 
     director_frame = tk.Frame(infoCanvas, bg='#3B3A3B')
@@ -619,7 +618,7 @@ def delete_movie():
             conn = sqlite3.connect("imdb.db")
             cursor = conn.cursor()
             cursor.execute("DELETE FROM genre WHERE movieID=?", (movie_id,))
-            #cursor.execute("DELETE FROM directs WHERE movieID=?", (movie_id,))
+            cursor.execute("DELETE FROM directs WHERE movieID=?", (movie_id,))
             cursor.execute("DELETE FROM casts WHERE movieID=?", (movie_id,))
             cursor.execute("DELETE FROM produces WHERE movieID=?", (movie_id,))
             cursor.execute("DELETE FROM movies WHERE movieID=?", (movie_id,))
@@ -1025,6 +1024,11 @@ def create_actor():
                 raise ValueError("Both Movie ID and Character must be filled or empty")
             elif (movie_id != "" and character != ""):
                 movie_id = int(movie_id)
+                cursor.execute("SELECT COUNT(*) FROM movies WHERE movieID=?", (movie_id,))
+                count = cursor.fetchone()[0]
+                if count == 0:
+                    conn.close()
+                    raise ValueError("Movie ID does not exist")
                 # Check if the actor ID is already casted in the movie ID
                 cursor.execute("SELECT COUNT(*) FROM casts WHERE movieID=? AND actorID=?", (movie_id, actor_id))
                 count = cursor.fetchone()[0]
@@ -1188,12 +1192,13 @@ def update_actor():
                     # Check if the actor ID is already casted in the movie ID
                     cursor.execute("SELECT COUNT(*) FROM casts WHERE movieID=? AND actorID=?", (selected_movie_id, actor_id))
                     count = cursor.fetchone()[0]
+                    print(count)
                     if count == 0:
                         # Insert cast information in the casts table
                         cursor.execute("INSERT INTO casts (movieID, actorID, character) VALUES (?, ?, ?)", (selected_movie_id, actor_id, character))
                     else:
                         # Update cast information in the casts table
-                        cursor.execute("UPDATE casts SET movieID=?, character=? WHERE actorID=?", (selected_movie_id, character, actor_id))
+                        cursor.execute("UPDATE casts SET character=? WHERE actorID=? AND movieID=?", (character, actor_id, selected_movie_id))
                     cursor.execute("UPDATE actors SET actorName=?, about=? WHERE actorID=?", (actor_name, about, actor_id))                    
                 else:
                     raise ValueError("Both movie ID and character must be either filled or empty")
@@ -1287,21 +1292,318 @@ def display_actor():
     conn = sqlite3.connect("imdb.db")
     cursor = conn.cursor()
     cursor.execute("SELECT actors.actorID, actors.actorName, actors.about, movies.title, casts.character \
-                    FROM actors \
-                    LEFT JOIN casts ON actors.actorID = casts.actorID \
-                    LEFT JOIN movies ON casts.movieID = movies.movieID")
+                FROM actors \
+                LEFT JOIN casts ON actors.actorID = casts.actorID \
+                LEFT JOIN movies ON casts.movieID = movies.movieID")
     actors_data = cursor.fetchall()
     conn.close()
 
     # Insert actor data into the Treeview
     for actor in actors_data:
         actor_id, actor_name, about, movie_title, character = actor
-        tree.insert("", "end", iid=actor_id, values=(actor_id, actor_name, about, movie_title, character))
+        tree.insert("", "end", values=(actor_id, actor_name, about, movie_title, character))
+
 
     # Set the column width to fit the content
     tree["displaycolumns"] = ("Actor ID", "Actor Name", "About", "Movie Title", "Character")
     tree["show"] = "headings"
 
+######################### CRUDL DIRECTOR #########################
+def create_director():
+    dialog = tk.Toplevel(window)
+    dialog.title("Create Director")
+    dialog.configure(background="#28282D")
+
+    # Create labels and entry fields for director information
+    director_labels = ["Director ID:", "Director Name:", "Director About:"]
+    director_entries = []
+    for i, label_text in enumerate(director_labels):
+        label = ttk.Label(dialog, text=label_text, background="#28282D", foreground="white", font=("Arial", 11))
+        label.grid(row=i, column=0, padx=5, pady=5)
+
+        entry = ttk.Entry(dialog, width=50)
+        entry.grid(row=i, column=1, padx=5, pady=5)
+        director_entries.append(entry)
+
+    # Create labels and entry fields for movieID information
+    movie_label = ttk.Label(dialog, text="Movie ID", background="#28282D", foreground="white", font=("Arial", 11))
+    movie_label.grid(row=len(director_labels), column=0, padx=5, pady=5)
+    movie_entry = ttk.Entry(dialog, width=50)
+    movie_entry.grid(row=len(director_labels), column=1, padx=5, pady=5)
+
+    def save_director():
+        try:
+            conn = sqlite3.connect("imdb.db")
+            cursor = conn.cursor()
+            # Retrieve director information from entry fields
+            director_id = director_entries[0].get()
+            director_name = director_entries[1].get()
+            about = director_entries[2].get()
+
+            # Retrieve movieID information from entry fields
+            movie_id = movie_entry.get()
+
+            if any(value is None or value == "" for value in [director_name, about]):
+                raise ValueError("Missing values in the entry")
+
+            director_id = int(director_id)
+
+            if (movie_id != ""):
+                movie_id = int(movie_id)
+                # Check if director ID is already directing the movie
+                cursor.execute("SELECT COUNT(*) FROM directs WHERE movieID=? AND directorID=?", (movie_id, director_id))
+                count = cursor.fetchone()[0]
+                if count > 0:
+                    conn.close()
+                    raise ValueError("Director ID is already in the movie")
+                
+                cursor.execute("SELECT COUNT(*) FROM directors WHERE directorID=?", (director_id,))
+                count = cursor.fetchone()[0]
+                if count > 0:
+                    # Director ID already exists, prompt user for confirmation
+                    result = messagebox.askquestion("Director ID Exists", "Director ID already exists. Do you want to proceed with the existing director information?")
+                    if result == "yes":
+                        # Retrieve existing directorName and about from the directors table
+                        cursor.execute("SELECT directorName, directorAbout FROM directors WHERE directorID=?", (director_id,))
+                        row = cursor.fetchone()
+                        director_name = row[0]
+                        about = row[1]
+                    else:
+                        conn.close()
+                        raise ValueError("Invalid Input: Director ID already exists")
+                else:
+                    cursor.execute("INSERT INTO directors (directorID, directorName, directorAbout) VALUES (?, ?, ?)", (director_id, director_name, about))
+                cursor.execute("INSERT INTO directs (movieID, directorID) VALUES (?, ?)", (movie_id, director_id))
+            else:
+                cursor.execute("SELECT COUNT(*) FROM directs WHERE directorID=?", (director_id,))
+                count = cursor.fetchone()[0]
+                if count > 0:
+                    conn.close()
+                    raise ValueError("Invalid Input: Director ID already exists")
+                else:
+                    cursor.execute("INSERT INTO directors (directorID, directorName, directorAbout) VALUES (?, ?, ?)", (director_id, director_name, about))
+        
+            conn.commit()
+            messagebox.showinfo("Success", "Director information added successfully")
+            if movie_id != "":
+                search_var.set(movie_id) 
+                displayMovie() 
+
+            # Close the database connection and the dialog window
+            conn.close()
+            dialog.destroy()
+        except ValueError as e:
+            messagebox.showwarning("Invalid Input", str(e))
+            dialog.focus_force()
+
+    # Create a button to save the director and directs information
+    save_button = tk.Button(dialog, text="Save", command=save_director)
+    save_button.grid(row=len(director_labels) + 1, columnspan=2, padx=5, pady=10)
+
+def update_director():
+    director_id = simpledialog.askinteger("Director ID", "Enter Director ID:")
+    if director_id is None:
+        return  # User cancelled, exit the function
+    while True:
+        # Check if director ID exists in directors table
+        conn = sqlite3.connect("imdb.db")
+        cursor = conn.cursor()
+        cursor.execute("SELECT COUNT(*) FROM directors WHERE directorID=?", (director_id,))
+        count = cursor.fetchone()[0]
+        if count == 0:
+            messagebox.showwarning("Invalid Input", "Director ID does not exist")
+            director_id = simpledialog.askinteger("Director ID", "Enter Director ID:")
+            if director_id is None:
+                conn.close()
+                return  # User cancelled, exit the function
+        else:
+            break
+
+    dialog = tk.Toplevel(window)
+    dialog.title("Update Director")
+    dialog.configure(background="#28282D")
+
+    # Create labels and entry fields for director information
+    director_labels = ["Director Name:", "About:"]
+    director_entries = []
+    for i, label_text in enumerate(director_labels):
+        label = ttk.Label(dialog, text=label_text, background="#28282D", foreground="white", font=("Arial", 11))
+        label.grid(row=i, column=0, padx=5, pady=5)
+
+        entry = ttk.Entry(dialog, width=50)
+        entry.grid(row=i, column=1, padx=5, pady=5)
+        director_entries.append(entry)
+
+    # Retrieve existing director information
+    cursor.execute("SELECT directorName, directorAbout FROM directors WHERE directorID=?", (director_id,))
+    row = cursor.fetchone()
+    existing_director_name = row[0]
+    existing_about = row[1]
+
+    cursor.execute("SELECT movieID FROM directs WHERE directorID=?", (director_id,))
+    row = cursor.fetchone()
+    movie_id = row[0] if row is not None else ""
+
+    # Create labels and entry fields for movie ID
+    movie_label = ttk.Label(dialog, text="Movie ID:", background="#28282D", foreground="white", font=("Arial", 11))
+    movie_label.grid(row=len(director_labels), column=0, padx=5, pady=5)
+
+    movie_entry = ttk.Entry(dialog, width=50)
+    movie_entry.insert(0, movie_id)
+    movie_entry.grid(row=len(director_labels), column=1, padx=5, pady=5)
+
+    # Fill entry fields with existing director information
+    director_entries[0].insert(0, existing_director_name)
+    director_entries[1].insert(0, existing_about)
+
+    def save_director():
+        try:
+            conn = sqlite3.connect("imdb.db")
+            cursor = conn.cursor()
+
+            # Retrieve updated director information from entry fields
+            director_name = director_entries[0].get()
+            about = director_entries[1].get()
+            movie_id = movie_entry.get()
+
+            if any(value is None or value == "" for value in [director_name, about]):
+                raise ValueError("Missing values in the entry")
+
+            # Update director information in the directors table
+            cursor.execute("UPDATE directors SET directorName=?, directorAbout=? WHERE directorID=?", (director_name, about, director_id))
+
+            if movie_id != "":
+                if not movie_id.isdigit():
+                    conn.close()
+                    raise ValueError("Movie ID must be an integer")
+
+                movie_id = int(movie_id)
+
+                # Check if the movie ID exists in the movies table
+                cursor.execute("SELECT COUNT(*) FROM movies WHERE movieID=?", (movie_id,))
+                count = cursor.fetchone()[0]
+                if count == 0:
+                    conn.close()
+                    raise ValueError("Movie ID does not exist")
+
+                # Check if the combination of movie ID and director ID already exists in the directs table
+                cursor.execute("SELECT COUNT(*) FROM directs WHERE movieID=? AND directorID=?", (movie_id, director_id))
+                count = cursor.fetchone()[0]
+                if count > 0:
+                    conn.close()
+                    raise ValueError("Director ID is already associated with the movie")
+
+                # Insert movie ID and director ID into the directs table
+                cursor.execute("INSERT INTO directs (movieID, directorID) VALUES (?, ?)", (movie_id, director_id))
+
+            conn.commit()
+            if movie_id != "":
+                search_var.set(movie_id) 
+                displayMovie() 
+            messagebox.showinfo("Success", "Director information updated successfully")
+
+            # Close the database connection and destroy the dialog
+            conn.close()
+            dialog.destroy()
+        except ValueError as e:
+            conn.close()
+            messagebox.showwarning("Invalid Input", str(e))
+            dialog.focus_force()
+
+    save_button = tk.Button(dialog, text="Save", command=save_director)
+    save_button.grid(row=len(director_labels) + 1, columnspan=2, padx=5, pady=10)
+    conn.close()
+
+def delete_director():
+    director_id = simpledialog.askinteger("Director ID", "Enter Director ID:")
+    if director_id is None:
+        return  # User cancelled, exit the function
+
+    # Check if director ID exists in directors table
+    conn = sqlite3.connect("imdb.db")
+    cursor = conn.cursor()
+    cursor.execute("SELECT COUNT(*) FROM directors WHERE directorID=?", (director_id,))
+    count = cursor.fetchone()[0]
+    if count == 0:
+        messagebox.showwarning("Invalid Input", "Director ID does not exist")
+        conn.close()
+        return
+
+    # Retrieve director name for confirmation message
+    cursor.execute("SELECT directorName FROM directors WHERE directorID=?", (director_id,))
+    director_name = cursor.fetchone()[0]
+
+    # Confirm deletion with the user
+    result = messagebox.askquestion("Confirm Deletion",
+                                    f"Are you sure you want to delete the director '{director_name}'?")
+    if result == "no":
+        conn.close()
+        return
+
+    try:
+        # Delete director information from directors table
+        cursor.execute("DELETE FROM directors WHERE directorID=?", (director_id,))
+        # Delete director's movie associations from directs table
+        cursor.execute("DELETE FROM directs WHERE directorID=?", (director_id,))
+
+        conn.commit()
+        messagebox.showinfo("Success", "Director information deleted successfully")
+    except Exception as e:
+        messagebox.showerror("Error", f"An error occurred while deleting director information: {str(e)}")
+
+    conn.close()
+
+def display_director():
+    dialog = tk.Toplevel(window)
+    dialog.title("Display Directors")
+    dialog.configure(background="#28282D")
+
+    # Create a frame to hold the Treeview
+    frame = tk.Frame(dialog)
+    frame.pack(fill="both", expand=True)
+
+    tree = ttk.Treeview(frame, height=30)
+    tree["columns"] = ("Director ID", "Director Name", "Director About", "Movie Title")
+
+    # Configure column headings
+    tree.heading("#0", text="")
+    tree.heading("Director ID", text="Director ID")
+    tree.heading("Director Name", text="Director Name")
+    tree.heading("Director About", text="Director About")
+    tree.heading("Movie Title", text="Movie Title")
+
+    # Configure column widths
+    tree.column("#0", width=0, stretch=False)
+    tree.column("Director ID", width=100)
+    tree.column("Director Name", width=200)
+    tree.column("Director About", width=300)
+    tree.column("Movie Title", width=200)
+
+    # Configure treeview size
+    tree.pack(fill="both", expand=True)
+
+    # Retrieve data from the "directors", "directs", and "movies" tables using JOIN
+    conn = sqlite3.connect("imdb.db")
+    cursor = conn.cursor()
+    cursor.execute("SELECT directors.directorID, directors.directorName, directors.directorAbout, movies.title \
+                    FROM directors \
+                    LEFT JOIN directs ON directors.directorID = directs.directorID \
+                    LEFT JOIN movies ON directs.movieID = movies.movieID")
+    directors_data = cursor.fetchall()
+    conn.close()
+
+    # Insert director data into the Treeview
+    for director in directors_data:
+        director_id, director_name, director_about, movie_title = director
+        tree.insert("", "end", values=(director_id, director_name, director_about, movie_title))
+
+    # Set the column width to fit the content
+    tree["displaycolumns"] = ("Director ID", "Director Name", "Director About", "Movie Title")
+    tree["show"] = "headings"
+
+    # Create a button to close the dialog
+    close_button = tk.Button(dialog, text="Close", command=dialog.destroy)
+    close_button.pack(pady=10)
 actions = {
     ("Create", "Movie"): create_movie,
     ("Update", "Movie"): update_movie,
@@ -1315,7 +1617,10 @@ actions = {
     ("Update", "Actor"): update_actor,
     ("Delete", "Actor"): delete_actor,
     ("Display", "Actor"): display_actor,
-}
+    ("Create", "Director"): create_director,
+    ("Update", "Director"): update_director,
+    ("Delete", "Director"): delete_director,
+    ("Display", "Director"): display_director}
 
 def perform_action():
     crudl = crudl_var.get()
