@@ -622,6 +622,7 @@ def delete_movie():
             cursor.execute("DELETE FROM casts WHERE movieID=?", (movie_id,))
             cursor.execute("DELETE FROM produces WHERE movieID=?", (movie_id,))
             cursor.execute("DELETE FROM movies WHERE movieID=?", (movie_id,))
+            cursor.execute("DELETE FROM bookmarks WHERE movieID=?", (movie_id,))
 
             # Commit the changes and close the connection
             conn.commit()
@@ -1733,7 +1734,7 @@ def display_director():
     # Create a button to close the dialog
     close_button = tk.Button(dialog, text="Close", command=dialog.destroy)
     close_button.pack(pady=10)
-    
+
 actions = {
     ("Create", "Movie"): create_movie,
     ("Update", "Movie"): update_movie,
